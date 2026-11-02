@@ -7,7 +7,7 @@
 > **Zero-Friction Phone-to-Laptop Screenshot & Photo Transfer**  
 > Direct peer-to-peer Wi-Fi streaming with zero cloud, zero social media, and zero USB/Bluetooth pairing hassle.
 
-**Latest release:** [v1.1.0 — release notes](RELEASE.md)
+**Latest release:** [v1.1.0 — release notes](release/RELEASE.md)
 
 ---
 
@@ -76,6 +76,6 @@ flutter build apk --release
 adb install -r build/app/outputs/flutter-apk/app-release.apk
 ```
 
-A ready-to-sideload build is placed at the repository root as
-`QuickDrop-1.1.0.apk`. See [RELEASE.md](RELEASE.md) for the full release notes,
+A ready-to-sideload build is placed in `release/QuickDrop-1.1.0.apk`.
+See [release/RELEASE.md](release/RELEASE.md) for the full release notes,
 installation steps and known limitations.

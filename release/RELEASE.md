@@ -3,7 +3,7 @@
 **Release date:** 2 November 2026
 **Version:** 1.1.0 (build 2)
 **Platforms:** Android 7.0+ (API 24) · Linux desktop (x64)
-**APK artifact:** `QuickDrop-1.1.0.apk`
+**APK artifact:** `release/QuickDrop-1.1.0.apk`
 
 ---
 
@@ -139,10 +139,10 @@ device card to the transfer screen and the diagnostics panel.
 
 ### Android (sideload)
 
-1. Copy `QuickDrop-1.1.0.apk` to the phone, or install over USB:
+1. Copy `release/QuickDrop-1.1.0.apk` to the phone, or install over USB:
 
    ```bash
-   adb install -r QuickDrop-1.1.0.apk
+   adb install -r release/QuickDrop-1.1.0.apk
    ```
 
 2. If installing from the phone's file manager, allow **Install unknown apps** for that
@@ -242,7 +242,7 @@ system. QuickDrop detects the resulting interfaces but does not toggle tethering
 Verify the downloaded APK:
 
 ```bash
-sha256sum QuickDrop-1.1.0.apk
+sha256sum release/QuickDrop-1.1.0.apk
 ```
 
 ---
@@ -261,7 +261,7 @@ uninstall the old build first — doing so clears local settings and history.
 - [x] Code, assets and platform integrations committed
 - [x] `flutter analyze` clean
 - [x] All automated tests passing
-- [x] Release APK built and copied to the repository root
+- [x] Release APK built and copied to `release/`
 - [ ] APK signed with a production keystore
 - [ ] GitHub release created and APK attached
 - [ ] Store listing and screenshots prepared

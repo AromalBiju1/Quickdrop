@@ -18,10 +18,8 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Local editor settings
+.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -53,9 +51,11 @@ app.*.map.json
 # Local design bundles
 /stitch_*.zip
 
-# Release artifacts kept at the repository root
+# Release artifacts are kept in release/ and are not committed
 /*.apk
 /*.aab
+/release/*.apk
+/release/*.aab
 
 # Kotlin build metadata
 .kotlin/
