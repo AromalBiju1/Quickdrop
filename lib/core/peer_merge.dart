@@ -10,10 +10,7 @@ DevicePeer mergePeerObservation(
   DevicePeer incoming,
   LinkKind link,
 ) {
-  final observed = incoming.copyWith(
-    link: link,
-    lastSeen: DateTime.now(),
-  );
+  final observed = incoming.copyWith(link: link, lastSeen: DateTime.now());
   if (existing == null) return observed;
 
   final manual = existing.isManual || observed.isManual;
@@ -22,8 +19,23 @@ DevicePeer mergePeerObservation(
     return observed.copyWith(isManual: manual);
   }
 
-  return existing.copyWith(
-    isManual: manual,
-    lastSeen: observed.lastSeen,
-  );
+  return existing.copyWith(isManual: manual, lastSeen: observed.lastSeen);
+}
+
+/// Manual peers stay at the bottom; the rest are ordered by link speed, then
+/// by name so the list does not jump around between scans.
+List<DevicePeer> sortPeers(Iterable<DevicePeer> peers) {
+  final sorted = List<DevicePeer>.from(peers);
+  sorted.sort((a, b) {
+    if (a.isManual != b.isManual) return a.isManual ? 1 : -1;
+
+    final byRank = b.link.rank.compareTo(a.link.rank);
+    if (byRank != 0) return byRank;
+
+    final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    if (byName != 0) return byName;
+
+    return a.id.compareTo(b.id);
+  });
+  return sorted;
 }

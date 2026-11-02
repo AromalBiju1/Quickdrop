@@ -17,6 +17,7 @@ import 'components/device_card.dart';
 import 'components/file_thumb.dart';
 import 'components/help_dialog.dart';
 import 'components/manual_connect_dialog.dart';
+import 'components/offline_link_dialog.dart';
 import 'components/qr_dialog.dart';
 import 'components/receive_card.dart';
 import 'components/send_panel.dart';
@@ -45,7 +46,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
   late final QuickDropController _controller;
   final ScrollController _scrollController = ScrollController();
   bool _dragging = false;
-  int _tab = const int.fromEnvironment('QUICKDROP_TAB', defaultValue: 0);
+  int _tab = 0;
   int _historyFilter = 0;
   SendSummary? _lastSummary;
 
@@ -163,6 +164,14 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     showDialog(
       context: context,
       builder: (context) => HelpDialog(discovery: _controller.discovery),
+    );
+  }
+
+  void _openOfflineLinks() {
+    showDialog(
+      context: context,
+      builder: (context) =>
+          OfflineLinkDialog(linkManager: _controller.discovery.linkManager),
     );
   }
 
@@ -339,26 +348,28 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        duration: const Duration(seconds: 3),
-        content: Row(
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                message,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
+      ..showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 3),
+          content: Row(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  message,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ));
+      );
   }
 
   @override
@@ -449,13 +460,9 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     return Container(
       decoration: const BoxDecoration(
         color: QuickDropColors.surface,
-        border: Border(
-          bottom: BorderSide(color: QuickDropColors.border),
-        ),
+        border: Border(bottom: BorderSide(color: QuickDropColors.border)),
       ),
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 16 : 28,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 16 : 28),
       height: compact ? 64 : 72,
       child: Row(
         children: [
@@ -492,16 +499,9 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
               ],
             ),
           ),
-          if (!compact) ...[
-            const SizedBox(width: 20),
-            _buildDesktopNav(),
-          ],
+          if (!compact) ...[const SizedBox(width: 20), _buildDesktopNav()],
           const SizedBox(width: 8),
-          StatusPill(
-            label: status,
-            foreground: statusFg,
-            background: statusBg,
-          ),
+          StatusPill(label: status, foreground: statusFg, background: statusBg),
           const SizedBox(width: 6),
           _headerIcon(
             icon: Icons.help_outline_rounded,
@@ -581,15 +581,9 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
         style: IconButton.styleFrom(
           minimumSize: const Size(36, 36),
           maximumSize: const Size(36, 36),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         ),
-        icon: Icon(
-          icon,
-          size: 19,
-          color: QuickDropColors.textSecondary,
-        ),
+        icon: Icon(icon, size: 19, color: QuickDropColors.textSecondary),
       ),
     );
   }
@@ -604,9 +598,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     return Container(
       decoration: const BoxDecoration(
         color: QuickDropColors.surface,
-        border: Border(
-          top: BorderSide(color: QuickDropColors.border),
-        ),
+        border: Border(top: BorderSide(color: QuickDropColors.border)),
       ),
       child: SafeArea(
         top: false,
@@ -695,10 +687,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _pageHeading(
-            'Send',
-            'Transfer finished. Review the result below.',
-          ),
+          _pageHeading('Send', 'Transfer finished. Review the result below.'),
           const SizedBox(height: 20),
           Center(
             child: ConstrainedBox(
@@ -812,7 +801,8 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
                     ),
                   DeviceCard(
                     peer: peers[i],
-                    selected: _controller.hasSelection &&
+                    selected:
+                        _controller.hasSelection &&
                         _controller.selectedPeer?.id == peers[i].id,
                     isSending: _controller.sendingPeerId == peers[i].id,
                     onSelect: () => _controller.selectPeer(peers[i]),
@@ -999,10 +989,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
               onHelp: _openHelp,
             ),
             const SizedBox(height: 14),
-            const Row(
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
+                const Padding(
                   padding: EdgeInsets.only(top: 1),
                   child: Icon(
                     Icons.wifi_rounded,
@@ -1010,16 +1000,29 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
                     color: QuickDropColors.textFaint,
                   ),
                 ),
-                SizedBox(width: 7),
-                Expanded(
+                const SizedBox(width: 7),
+                const Expanded(
                   child: Text(
-                    'Devices must share a Wi-Fi network or hotspot. No internet connection is involved.',
+                    'Devices must share a Wi-Fi network or hotspot, or use USB/Bluetooth tethering. No internet connection is involved.',
                     style: TextStyle(
                       color: QuickDropColors.textMuted,
                       fontSize: 11.5,
                       height: 1.5,
                     ),
                   ),
+                ),
+                TextButton(
+                  onPressed: _openOfflineLinks,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 32),
+                    textStyle: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: const Text('No Wi-Fi?'),
                 ),
               ],
             ),
@@ -1035,8 +1038,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     return ValueListenableBuilder<List<TransferItem>>(
       valueListenable: _controller.server.historyNotifier,
       builder: (context, history, _) {
-        final incoming =
-            history.where((item) => item.isIncoming).take(4).toList();
+        final incoming = history
+            .where((item) => item.isIncoming)
+            .take(4)
+            .toList();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1350,10 +1355,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
         ),
         if (trailing != null) ...[
           const SizedBox(width: 12),
-          Padding(
-            padding: const EdgeInsets.only(top: 3),
-            child: trailing,
-          ),
+          Padding(padding: const EdgeInsets.only(top: 3), child: trailing),
         ],
       ],
     );
@@ -1373,9 +1375,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
           maximumSize: const Size(36, 36),
           backgroundColor: QuickDropColors.surface,
           side: const BorderSide(color: QuickDropColors.border),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         ),
         icon: Icon(icon, size: 17, color: QuickDropColors.textSecondary),
       ),
@@ -1390,17 +1390,11 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
           padding: const EdgeInsets.all(24),
           child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 42,
-                vertical: 36,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 36),
               decoration: BoxDecoration(
                 color: QuickDropColors.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: QuickDropColors.emerald,
-                  width: 1.5,
-                ),
+                border: Border.all(color: QuickDropColors.emerald, width: 1.5),
                 boxShadow: QuickDropColors.raisedShadow,
               ),
               child: const Column(

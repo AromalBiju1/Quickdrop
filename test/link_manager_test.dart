@@ -42,11 +42,7 @@ void main() {
         'rmnet0',
         'clat0',
       ]) {
-        expect(
-          SystemNetworkLinkProvider.isVirtual(name),
-          isTrue,
-          reason: name,
-        );
+        expect(SystemNetworkLinkProvider.isVirtual(name), isTrue, reason: name);
       }
       expect(SystemNetworkLinkProvider.isVirtual('usb0'), isFalse);
       expect(SystemNetworkLinkProvider.isVirtual('bnep0'), isFalse);
@@ -56,10 +52,26 @@ void main() {
   group('LinkManager', () {
     test('sorts by speed and collapses duplicate IPs', () async {
       final provider = _FakeProvider([
-        const LinkInterface(name: 'bnep0', ip: '10.0.0.2', kind: LinkKind.bluetooth),
-        const LinkInterface(name: 'wlan0', ip: '192.168.1.5', kind: LinkKind.wifi),
-        const LinkInterface(name: 'usb0', ip: '192.168.42.5', kind: LinkKind.usb),
-        const LinkInterface(name: 'rndis0', ip: '192.168.42.5', kind: LinkKind.usb),
+        const LinkInterface(
+          name: 'bnep0',
+          ip: '10.0.0.2',
+          kind: LinkKind.bluetooth,
+        ),
+        const LinkInterface(
+          name: 'wlan0',
+          ip: '192.168.1.5',
+          kind: LinkKind.wifi,
+        ),
+        const LinkInterface(
+          name: 'usb0',
+          ip: '192.168.42.5',
+          kind: LinkKind.usb,
+        ),
+        const LinkInterface(
+          name: 'rndis0',
+          ip: '192.168.42.5',
+          kind: LinkKind.usb,
+        ),
       ]);
       final manager = LinkManager(provider: provider);
       await manager.refresh();
@@ -74,8 +86,16 @@ void main() {
 
     test('displayIp prefers Wi-Fi over a USB tether', () async {
       final provider = _FakeProvider([
-        const LinkInterface(name: 'usb0', ip: '192.168.42.5', kind: LinkKind.usb),
-        const LinkInterface(name: 'wlan0', ip: '192.168.1.5', kind: LinkKind.wifi),
+        const LinkInterface(
+          name: 'usb0',
+          ip: '192.168.42.5',
+          kind: LinkKind.usb,
+        ),
+        const LinkInterface(
+          name: 'wlan0',
+          ip: '192.168.1.5',
+          kind: LinkKind.wifi,
+        ),
       ]);
       final manager = LinkManager(provider: provider);
       await manager.refresh();
@@ -85,7 +105,11 @@ void main() {
 
     test('falls back to the tether when Wi-Fi is gone', () async {
       final provider = _FakeProvider([
-        const LinkInterface(name: 'usb0', ip: '192.168.42.5', kind: LinkKind.usb),
+        const LinkInterface(
+          name: 'usb0',
+          ip: '192.168.42.5',
+          kind: LinkKind.usb,
+        ),
       ]);
       final manager = LinkManager(provider: provider);
       await manager.refresh();
@@ -95,8 +119,16 @@ void main() {
 
     test('builds broadcast targets and prefixes for every link', () async {
       final provider = _FakeProvider([
-        const LinkInterface(name: 'usb0', ip: '192.168.42.5', kind: LinkKind.usb),
-        const LinkInterface(name: 'bnep0', ip: '10.0.0.5', kind: LinkKind.bluetooth),
+        const LinkInterface(
+          name: 'usb0',
+          ip: '192.168.42.5',
+          kind: LinkKind.usb,
+        ),
+        const LinkInterface(
+          name: 'bnep0',
+          ip: '10.0.0.5',
+          kind: LinkKind.bluetooth,
+        ),
       ]);
       final manager = LinkManager(provider: provider);
       await manager.refresh();
@@ -115,8 +147,16 @@ void main() {
 
     test('resolves the highest-ranked link for an address', () async {
       final provider = _FakeProvider([
-        const LinkInterface(name: 'usb0', ip: '192.168.42.5', kind: LinkKind.usb),
-        const LinkInterface(name: 'wlan0', ip: '192.168.1.5', kind: LinkKind.wifi),
+        const LinkInterface(
+          name: 'usb0',
+          ip: '192.168.42.5',
+          kind: LinkKind.usb,
+        ),
+        const LinkInterface(
+          name: 'wlan0',
+          ip: '192.168.1.5',
+          kind: LinkKind.wifi,
+        ),
       ]);
       final manager = LinkManager(provider: provider);
       await manager.refresh();
@@ -126,9 +166,34 @@ void main() {
       expect(manager.linkForIp('172.16.0.9'), isNull);
     });
 
+    test('recognizes every address that belongs to this device', () async {
+      final provider = _FakeProvider([
+        const LinkInterface(
+          name: 'usb0',
+          ip: '192.168.42.5',
+          kind: LinkKind.usb,
+        ),
+        const LinkInterface(
+          name: 'wlan0',
+          ip: '192.168.1.5',
+          kind: LinkKind.wifi,
+        ),
+      ]);
+      final manager = LinkManager(provider: provider);
+      await manager.refresh();
+
+      expect(manager.isLocalAddress('192.168.42.5'), isTrue);
+      expect(manager.isLocalAddress('192.168.1.5'), isTrue);
+      expect(manager.isLocalAddress('192.168.42.9'), isFalse);
+    });
+
     test('notifies only when the set changes', () async {
       final provider = _FakeProvider([
-        const LinkInterface(name: 'usb0', ip: '192.168.42.5', kind: LinkKind.usb),
+        const LinkInterface(
+          name: 'usb0',
+          ip: '192.168.42.5',
+          kind: LinkKind.usb,
+        ),
       ]);
       final manager = LinkManager(provider: provider);
       var notifications = 0;

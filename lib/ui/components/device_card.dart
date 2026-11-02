@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../models/device_peer.dart';
+import '../../models/link.dart';
 import '../quickdrop_theme.dart';
+import 'link_chip.dart';
 
 class DeviceCard extends StatelessWidget {
   final DevicePeer peer;
@@ -22,7 +24,9 @@ class DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? QuickDropColors.emeraldSoft.withValues(alpha: 0.55) : Colors.transparent,
+      color: selected
+          ? QuickDropColors.emeraldSoft.withValues(alpha: 0.55)
+          : Colors.transparent,
       child: InkWell(
         onTap: isSending ? null : onSelect,
         hoverColor: QuickDropColors.surfaceMuted,
@@ -43,7 +47,9 @@ class DeviceCard extends StatelessWidget {
                   peer.isDesktop
                       ? Icons.laptop_mac_rounded
                       : Icons.phone_android_rounded,
-                  color: selected ? Colors.white : QuickDropColors.textSecondary,
+                  color: selected
+                      ? Colors.white
+                      : QuickDropColors.textSecondary,
                   size: 20,
                 ),
               ),
@@ -78,6 +84,10 @@ class DeviceCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (peer.link != LinkKind.unknown) ...[
+                          const SizedBox(width: 5),
+                          LinkChip(kind: peer.link, compact: true),
+                        ],
                         if (peer.isManual) ...[
                           const SizedBox(width: 5),
                           const Tooltip(

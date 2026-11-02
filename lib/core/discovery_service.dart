@@ -43,8 +43,9 @@ class DiscoveryService {
 
   final ValueNotifier<List<DevicePeer>> peersNotifier =
       ValueNotifier<List<DevicePeer>>([]);
-  final ValueNotifier<String> localIpNotifier =
-      ValueNotifier<String>('Detecting…');
+  final ValueNotifier<String> localIpNotifier = ValueNotifier<String>(
+    'Detecting…',
+  );
   final ValueNotifier<bool> isScanningNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<String> deviceNameNotifier = ValueNotifier<String>('');
 
@@ -53,12 +54,13 @@ class DiscoveryService {
     String deviceName = '',
     int? httpPort,
     LinkManager? linkManager,
-  })  : deviceId =
-            deviceId ?? 'dev_${Platform.operatingSystem}_${Random().nextInt(999999)}',
-        // ignore: prefer_initializing_formals
-        _deviceName = deviceName,
-        httpPort = httpPort ?? defaultHttpPort,
-        linkManager = linkManager ?? LinkManager() {
+  }) : deviceId =
+           deviceId ??
+           'dev_${Platform.operatingSystem}_${Random().nextInt(999999)}',
+       // ignore: prefer_initializing_formals
+       _deviceName = deviceName,
+       httpPort = httpPort ?? defaultHttpPort,
+       linkManager = linkManager ?? LinkManager() {
     deviceNameNotifier.value = _deviceName;
   }
 
@@ -68,7 +70,9 @@ class DiscoveryService {
 
   String get webUrl {
     final ip = localIp;
-    if (ip == 'Detecting…' || ip.isEmpty) return 'http://localhost:$httpPort/web';
+    if (ip == 'Detecting…' || ip.isEmpty) {
+      return 'http://localhost:$httpPort/web';
+    }
     return 'http://$ip:$httpPort/web';
   }
 
@@ -130,9 +134,12 @@ class DiscoveryService {
         _socket?.joinMulticast(InternetAddress(multicastAddress));
       } catch (_) {}
 
-      _socket?.listen(_handleDatagram, onError: (e) {
-        debugPrint('[Discovery] Socket error: $e');
-      });
+      _socket?.listen(
+        _handleDatagram,
+        onError: (e) {
+          debugPrint('[Discovery] Socket error: $e');
+        },
+      );
     } catch (e) {
       debugPrint('[Discovery] Failed to bind UDP socket: $e');
     }
@@ -216,7 +223,10 @@ class DiscoveryService {
   Future<ManualPeerResult> addManualPeer(String input) async {
     final target = _parseHost(input);
     if (target == null) {
-      return const ManualPeerResult(false, 'Enter a valid IPv4 address, e.g. 192.168.1.42');
+      return const ManualPeerResult(
+        false,
+        'Enter a valid IPv4 address, e.g. 192.168.1.42',
+      );
     }
 
     final host = '${target.$1}:${target.$2}';
@@ -304,10 +314,9 @@ class DiscoveryService {
 
     final targets = <String>[];
     for (final prefix in _subnetPrefixes) {
-      final ownIp = localIp;
       for (var host = 1; host <= 254; host++) {
         final ip = '$prefix.$host';
-        if (ip == ownIp) continue;
+        if (linkManager.isLocalAddress(ip)) continue;
         targets.add(ip);
       }
     }
@@ -349,7 +358,8 @@ class DiscoveryService {
     if (datagram == null) return;
 
     try {
-      final map = jsonDecode(utf8.decode(datagram.data)) as Map<String, dynamic>;
+      final map =
+          jsonDecode(utf8.decode(datagram.data)) as Map<String, dynamic>;
       if (map['protocol'] != 'quickdrop_v1') return;
       final remoteId = map['id'] as String?;
       if (remoteId == null || remoteId == deviceId) return;
@@ -407,18 +417,13 @@ class DiscoveryService {
   }
 
   void _updatePeerList() {
-    final peers = _peers.values.toList()
-      ..sort((a, b) {
-        if (a.isManual != b.isManual) return a.isManual ? 1 : -1;
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      });
-    peersNotifier.value = peers;
+    peersNotifier.value = sortPeers(_peers.values);
   }
 
   String get _deviceType =>
       Platform.isLinux || Platform.isMacOS || Platform.isWindows
-          ? 'desktop'
-          : 'mobile';
+      ? 'desktop'
+      : 'mobile';
 
   void stop() {
     _broadcastTimer?.cancel();

@@ -1,9 +1,9 @@
-# QuickDrop v1.0.0 — Release Notes
+# QuickDrop v1.1.0 — Release Notes
 
 **Release date:** 2 November 2026
-**Version:** 1.0.0 (build 1)
+**Version:** 1.1.0 (build 2)
 **Platforms:** Android 7.0+ (API 24) · Linux desktop (x64)
-**APK artifact:** `QuickDrop-1.0.0.apk`
+**APK artifact:** `QuickDrop-1.1.0.apk`
 
 ---
 
@@ -14,8 +14,42 @@ computer over the local network. There is no account, no cloud upload, no pairin
 and no internet requirement. Both devices simply need to reach each other — normal Wi-Fi,
 a phone hotspot, a USB tether or a Bluetooth tether all work.
 
-This is the first public **1.0.0** build and the first release with the redesigned
-three-tab interface.
+This release builds on the first public **1.0.0** build and completes the offline-link
+experience: USB and Bluetooth tethering are now visible everywhere they matter, from the
+device card to the transfer screen and the diagnostics panel.
+
+---
+
+## What's new in 1.1.0
+
+### Link-aware device list
+
+- Every nearby device now carries a small link chip: **USB**, **Bluetooth**, **Wi-Fi**,
+  **Wired** or **Network**.
+- Devices are ordered fastest link first, then by name, while manual IP peers stay at the
+  bottom of the list.
+- A device reachable over Wi-Fi and USB at the same time appears once, preferring USB.
+
+### Clear transfer-path feedback
+
+- The active transfer panel names the link in use: **Sending over USB**, **Finishing over
+  Bluetooth** and so on.
+- If a cable is unplugged or a tether is disabled mid-transfer, the failure explains what
+  happened and how to recover instead of showing a generic socket error.
+
+### `No Wi-Fi?` help and diagnostics
+
+- The Receive tab has a **No Wi-Fi?** action with step-by-step USB and Bluetooth
+  tethering instructions, a live list of detected interfaces, and an Android shortcut to
+  tethering settings.
+- Settings now includes an **ACTIVE LINKS** section showing each interface's link kind,
+  name, IP and priority.
+
+### Reliability
+
+- Subnet probing now skips every local tether address, not only the primary Wi-Fi IP.
+- Removed the temporary visual-test harness and its golden files.
+- README documents USB and Bluetooth tethering setup and expected link behavior.
 
 ---
 
@@ -105,10 +139,10 @@ three-tab interface.
 
 ### Android (sideload)
 
-1. Copy `QuickDrop-1.0.0.apk` to the phone, or install over USB:
+1. Copy `QuickDrop-1.1.0.apk` to the phone, or install over USB:
 
    ```bash
-   adb install -r QuickDrop-1.0.0.apk
+   adb install -r QuickDrop-1.1.0.apk
    ```
 
 2. If installing from the phone's file manager, allow **Install unknown apps** for that
@@ -181,11 +215,10 @@ system. QuickDrop detects the resulting interfaces but does not toggle tethering
 
 - The APK uses the debug signing key; a production release keystore is still required.
 - No transport encryption or peer authentication yet.
-- USB/Bluetooth links are detected and used, but the per-device link badge and the
-  active-link diagnostics panel described in the design document are not exposed in this
-  build.
+- USB/Bluetooth links are detected and used automatically once the operating system
+  enables tethering; the app does not toggle tethering itself.
 - No resume or mid-transfer link migration. If a cable is unplugged or Wi-Fi drops, the
-  in-flight file fails and must be retried.
+  in-flight file fails with a link-specific message and must be retried.
 - The Android receiver runs while the app is open; there is no background service.
 - Linux Bluetooth PAN setup is operating-system work. The app can use `bnep0` once the
   PAN connection exists, but cannot create it.
@@ -200,26 +233,26 @@ system. QuickDrop detects the resulting interfaces but does not toggle tethering
 | Check | Result |
 | --- | --- |
 | `flutter analyze` | Clean (0 issues) |
-| `flutter test` | 25 tests passing |
+| `flutter test` | 34 tests passing |
 | Toolchain | Flutter 3.47.7 / Dart 3.13.5 |
 | Build mode | `flutter build apk --release` |
-| APK size | 53.9 MB (53,890,384 bytes) |
-| APK SHA-256 | `4cf9f3cfcddee1bdde77ae8fce6f0682f42b6c415bbf8cbcdf5730db89345769` |
+| APK size | 53.9 MB (53,906,976 bytes) |
+| APK SHA-256 | `c587bba1696bb7b3f09f672003b319b8b8dbcb788c5a0f5b11e2095b85c780d6` |
 
 Verify the downloaded APK:
 
 ```bash
-sha256sum QuickDrop-1.0.0.apk
+sha256sum QuickDrop-1.1.0.apk
 ```
 
 ---
 
 ## Upgrade notes
 
-This is the first 1.0.0 build. If a debug build was installed previously, install over it
-with `adb install -r`; app settings and transfer history are kept. If Android reports a
-signature mismatch, uninstall the old build first — doing so clears local settings and
-history.
+This release installs over 1.0.0 with `adb install -r`; app settings and transfer history
+are kept. The link UI requires no new permissions and no changes to the transfer protocol,
+so 1.1.0 can exchange files with 1.0.0 devices. If Android reports a signature mismatch,
+uninstall the old build first — doing so clears local settings and history.
 
 ---
 

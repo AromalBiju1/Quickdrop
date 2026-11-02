@@ -6,6 +6,7 @@ import '../../core/app_store.dart';
 import '../../core/quickdrop_controller.dart';
 import '../quickdrop_theme.dart';
 import 'file_thumb.dart';
+import 'link_chip.dart';
 
 class SettingsDialog extends StatefulWidget {
   final QuickDropController controller;
@@ -53,11 +54,13 @@ class _SettingsDialogState extends State<SettingsDialog> {
       _saving = true;
       _error = null;
     });
-    await widget.controller.updateSettings(AppSettings(
-      deviceName: name,
-      autoCopyImages: _autoCopy,
-      notifications: _notifications,
-    ));
+    await widget.controller.updateSettings(
+      AppSettings(
+        deviceName: name,
+        autoCopyImages: _autoCopy,
+        notifications: _notifications,
+      ),
+    );
     if (mounted) Navigator.pop(context, true);
   }
 
@@ -90,7 +93,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'QuickDrop 2.0',
+                  'QuickDrop 1.1.0',
                   style: TextStyle(
                     color: QuickDropColors.textMuted,
                     fontSize: 11,
@@ -228,10 +231,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                             minimumSize: const Size(30, 30),
                             maximumSize: const Size(30, 30),
                           ),
-                          icon: const Icon(
-                            Icons.open_in_new_rounded,
-                            size: 15,
-                          ),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 15),
                         ),
                       ],
                     ),
@@ -327,6 +327,116 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 18),
+              _sectionLabel('ACTIVE LINKS'),
+              const SizedBox(height: 8),
+              ValueListenableBuilder(
+                valueListenable: discovery.linkManager.linksNotifier,
+                builder: (context, links, _) {
+                  if (links.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 11,
+                      ),
+                      decoration: BoxDecoration(
+                        color: QuickDropColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: QuickDropColors.border),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.link_off_rounded,
+                            size: 15,
+                            color: QuickDropColors.textFaint,
+                          ),
+                          SizedBox(width: 7),
+                          Expanded(
+                            child: Text(
+                              'No active links yet. Connect to Wi-Fi or enable tethering.',
+                              style: TextStyle(
+                                color: QuickDropColors.textMuted,
+                                fontSize: 10.5,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: QuickDropColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: QuickDropColors.border),
+                    ),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < links.length; i++) ...[
+                          if (i > 0)
+                            const Divider(
+                              height: 1,
+                              indent: 12,
+                              endIndent: 12,
+                              color: QuickDropColors.surfaceSubtle,
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                LinkChip(kind: links[i].kind),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        links[i].name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: QuickDropColors.textSecondary,
+                                          fontSize: 11,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        links[i].ip,
+                                        style: const TextStyle(
+                                          color: QuickDropColors.textMuted,
+                                          fontSize: 10,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  'priority ${links[i].rank}',
+                                  style: const TextStyle(
+                                    color: QuickDropColors.textFaint,
+                                    fontSize: 9.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 10),
               const Row(
@@ -433,10 +543,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ),
           ),
           const SizedBox(width: 8),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-          ),
+          Switch(value: value, onChanged: onChanged),
         ],
       ),
     );

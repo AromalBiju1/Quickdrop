@@ -4,6 +4,7 @@ import 'dart:io';
 
 import '../models/device_peer.dart';
 import 'file_utils.dart';
+import 'link_errors.dart';
 
 class TransferResult {
   final bool success;
@@ -84,8 +85,9 @@ class TransferClient {
 
       final fileSize = await file.length();
       final fileName = FileUtils.fileName(file.path);
-      final url =
-          Uri.parse('http://${targetPeer.ip}:${targetPeer.httpPort}/api/transfer');
+      final url = Uri.parse(
+        'http://${targetPeer.ip}:${targetPeer.httpPort}/api/transfer',
+      );
       final request = await client.postUrl(url);
 
       request.headers.set('X-File-Name', Uri.encodeComponent(fileName));
@@ -127,8 +129,8 @@ class TransferClient {
       // writing, renaming and acknowledging the file.
       onUploadFinished?.call();
       final response = await request.close().timeout(
-            const Duration(minutes: 2),
-          );
+        const Duration(minutes: 2),
+      );
       final responseBody = await utf8.decodeStream(response);
       final duration = DateTime.now().difference(startTime).inMilliseconds;
 
@@ -140,7 +142,8 @@ class TransferClient {
         } catch (_) {}
         return TransferResult(
           success: true,
-          message: 'Delivered in ${FileUtils.formatDuration(Duration(milliseconds: duration))}',
+          message:
+              'Delivered in ${FileUtils.formatDuration(Duration(milliseconds: duration))}',
           durationMs: duration,
           savedPath: savedPath,
           bytesSent: bytesSent,
@@ -173,7 +176,10 @@ class TransferClient {
       // Legacy USB fallback: `adb reverse tcp:53319 tcp:53318` on the laptop.
       if (Platform.isAndroid && targetPeer.ip != '127.0.0.1') {
         try {
-          final fallbackPeer = targetPeer.copyWith(ip: '127.0.0.1', httpPort: 53319);
+          final fallbackPeer = targetPeer.copyWith(
+            ip: '127.0.0.1',
+            httpPort: 53319,
+          );
           final fallback = await sendFile(
             targetPeer: fallbackPeer,
             file: file,
@@ -191,7 +197,7 @@ class TransferClient {
 
       return TransferResult(
         success: false,
-        message: _friendlyError(e),
+        message: linkDropMessage(e, targetPeer.link) ?? _friendlyError(e),
         durationMs: DateTime.now().difference(startTime).inMilliseconds,
       );
     } finally {
@@ -213,7 +219,8 @@ class TransferClient {
     if (text.contains('No route to host') || text.contains('errno = 113')) {
       return 'No route to that device. Check that both devices are on the same network.';
     }
-    if (text.contains('Network is unreachable') || text.contains('errno = 101')) {
+    if (text.contains('Network is unreachable') ||
+        text.contains('errno = 101')) {
       return 'Network is unreachable. Reconnect both devices to the same Wi-Fi or hotspot.';
     }
     if (text.contains('TimeoutException')) {

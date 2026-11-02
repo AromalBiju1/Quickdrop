@@ -3,7 +3,7 @@
 > **Zero-Friction Phone-to-Laptop Screenshot & Photo Transfer**  
 > Direct peer-to-peer Wi-Fi streaming with zero cloud, zero social media, and zero USB/Bluetooth pairing hassle.
 
-**Latest release:** [v1.0.0 — release notes](RELEASE.md)
+**Latest release:** [v1.1.0 — release notes](RELEASE.md)
 
 ---
 
@@ -38,6 +38,33 @@ flutter run -d linux
 
 ---
 
+## 🔌 USB & Bluetooth Tethering
+
+QuickDrop still uses the same local HTTP transfer engine when there is no
+Wi-Fi network. The operating system carries the traffic; the app detects the
+new interface and labels it.
+
+**USB tethering**
+1. Connect the phone to the computer with a USB cable.
+2. On Android, open **Settings → Hotspot & tethering** and enable **USB
+   tethering**.
+3. Linux usually creates `usb0` or `rndis0` automatically within a few seconds.
+   The device card shows a `USB` chip and the Settings dialog lists the link
+   under **ACTIVE LINKS**.
+
+**Bluetooth tethering**
+1. Pair the phone and computer once in their Bluetooth settings.
+2. On Android, enable **Bluetooth tethering**.
+3. Connect the phone's network in Linux Bluetooth or NetworkManager. QuickDrop
+   shows the link as `Bluetooth` (often `bnep0`).
+
+Open **Receive → No Wi-Fi?** for the same steps and a live list of detected
+interfaces. If a tether is unplugged or disabled mid-transfer, QuickDrop stops
+with a link-specific message and leaves no partial file behind. No internet
+connection is used in any of these modes.
+
+---
+
 ## 📱 Android Build & Install
 
 ```bash
@@ -46,5 +73,5 @@ adb install -r build/app/outputs/flutter-apk/app-release.apk
 ```
 
 A ready-to-sideload build is placed at the repository root as
-`QuickDrop-1.0.0.apk`. See [RELEASE.md](RELEASE.md) for the full release notes,
+`QuickDrop-1.1.0.apk`. See [RELEASE.md](RELEASE.md) for the full release notes,
 installation steps and known limitations.

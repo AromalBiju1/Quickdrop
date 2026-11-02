@@ -4,13 +4,15 @@ import 'package:quickdrop/models/device_peer.dart';
 import 'package:quickdrop/models/link.dart';
 
 DevicePeer _peer({
+  String id = 'dev_1',
+  String name = 'Phone',
   String ip = '192.168.1.10',
   bool manual = false,
   LinkKind link = LinkKind.wifi,
 }) {
   return DevicePeer(
-    id: 'dev_1',
-    name: 'Phone',
+    id: id,
+    name: name,
     deviceType: 'mobile',
     ip: ip,
     httpPort: 53318,
@@ -72,5 +74,23 @@ void main() {
 
     expect(merged.isManual, isTrue);
     expect(merged.link, LinkKind.usb);
+  });
+
+  test('peer list sorts manual last, then by link speed and name', () {
+    final sorted = sortPeers([
+      _peer(id: 'manual', name: 'Adam', manual: true, link: LinkKind.usb),
+      _peer(id: 'bt', name: 'Zed', link: LinkKind.bluetooth),
+      _peer(id: 'wifi-b', name: 'Beta', link: LinkKind.wifi),
+      _peer(id: 'wifi-a', name: 'Alpha', link: LinkKind.wifi),
+      _peer(id: 'usb', name: 'Zulu', link: LinkKind.usb),
+    ]);
+
+    expect(sorted.map((peer) => peer.id), [
+      'usb',
+      'wifi-a',
+      'wifi-b',
+      'bt',
+      'manual',
+    ]);
   });
 }

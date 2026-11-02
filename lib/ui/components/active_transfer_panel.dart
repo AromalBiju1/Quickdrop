@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/file_utils.dart';
 import '../../core/quickdrop_controller.dart';
+import '../../models/link.dart';
 import '../quickdrop_theme.dart';
 import 'file_thumb.dart';
 
@@ -26,15 +27,24 @@ class ActiveTransferPanel extends StatelessWidget {
     final files = controller.activeBatch;
     final visible = files.take(5).toList();
     final hidden = files.length - visible.length;
-    final remainingBytes =
-        (progress.totalBytes - progress.sentBytes).clamp(0, progress.totalBytes);
+    final remainingBytes = (progress.totalBytes - progress.sentBytes).clamp(
+      0,
+      progress.totalBytes,
+    );
     final eta = progress.bytesPerSecond > 0
         ? Duration(seconds: (remainingBytes / progress.bytesPerSecond).ceil())
         : null;
 
+    final link = peer?.link;
     final details = controller.isFinishing
-        ? <String>['Finishing on ${peer?.name ?? 'the receiver'}…']
+        ? <String>[
+            if (link != null && link != LinkKind.unknown)
+              'Finishing over ${link.label}',
+            'Finishing on ${peer?.name ?? 'the receiver'}…',
+          ]
         : <String>[
+            if (link != null && link != LinkKind.unknown)
+              'Sending over ${link.label}',
             if (progress.bytesPerSecond > 0)
               FileUtils.formatSpeed(progress.bytesPerSecond),
             if (eta != null) '${FileUtils.formatDuration(eta)} left',
@@ -89,9 +99,7 @@ class ActiveTransferPanel extends StatelessWidget {
           const SizedBox(height: 16),
           Center(
             child: Text(
-              details.isEmpty
-                  ? 'Preparing transfer…'
-                  : details.join('  ·  '),
+              details.isEmpty ? 'Preparing transfer…' : details.join('  ·  '),
               style: const TextStyle(
                 color: QuickDropColors.textMuted,
                 fontSize: 12.5,
@@ -218,10 +226,10 @@ class ActiveTransferPanel extends StatelessWidget {
     final status = isDone
         ? 'Done'
         : isCurrent
-            ? (controller.isFinishing
-                ? 'Saving'
-                : '${(progress.fileProgress * 100).round()}%')
-            : 'Queued';
+        ? (controller.isFinishing
+              ? 'Saving'
+              : '${(progress.fileProgress * 100).round()}%')
+        : 'Queued';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -276,8 +284,8 @@ class ActiveTransferPanel extends StatelessWidget {
                 foreground: isDone
                     ? QuickDropColors.emeraldDark
                     : isCurrent
-                        ? QuickDropColors.emeraldDark
-                        : QuickDropColors.textMuted,
+                    ? QuickDropColors.emeraldDark
+                    : QuickDropColors.textMuted,
                 background: isDone || isCurrent
                     ? QuickDropColors.emeraldSoft
                     : QuickDropColors.surfaceSubtle,
