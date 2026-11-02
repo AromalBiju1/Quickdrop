@@ -1,8 +1,14 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../core/file_utils.dart';
 import '../../core/linux_integrations.dart';
+import '../../core/platform_integrations.dart';
 import '../../models/device_peer.dart';
 import '../quickdrop_theme.dart';
+import 'file_thumb.dart';
 
 class TransferHistoryTile extends StatelessWidget {
   final TransferItem item;
@@ -11,114 +17,241 @@ class TransferHistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final file = File(item.filePath);
-    final fileExists = file.existsSync();
+    // Android files live in public Downloads through MediaStore. A scoped
+    // path may not be stat-able, but the content URI is still valid.
+    final exists = (item.contentUri?.isNotEmpty ?? false) ||
+        (item.filePath.isNotEmpty && File(item.filePath).existsSync());
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: QuickDropColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: QuickDropColors.border),
-      ),
-      child: Row(
-        children: [
-          // Image thumbnail or icon
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 52,
-              height: 52,
-              child: fileExists
-                  ? Image.file(
-                      file,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _fallbackIcon(),
-                    )
-                  : _fallbackIcon(),
-            ),
-          ),
-          const SizedBox(width: 14),
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.fileName,
-                  style: const TextStyle(
-                    color: QuickDropColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: exists ? () => _open(context) : null,
+        hoverColor: QuickDropColors.surfaceMuted,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 11, 6, 11),
+          child: Row(
+            children: [
+              Opacity(
+                opacity: exists ? 1 : 0.45,
+                child: FileThumb(path: item.filePath, size: 40, radius: 10),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      item.isIncoming
-                          ? Icons.call_received_rounded
-                          : Icons.call_made_rounded,
-                      size: 13,
-                      color: item.isIncoming
-                          ? QuickDropColors.emerald
-                          : QuickDropColors.cyan,
-                    ),
-                    const SizedBox(width: 4),
                     Text(
-                      '${item.isIncoming ? "From" : "To"} ${item.senderName} • ${item.formattedSize}',
+                      item.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: exists
+                            ? QuickDropColors.textPrimary
+                            : QuickDropColors.textMuted,
+                        fontSize: 12.5,
+                        height: 1.3,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${item.isIncoming ? 'From' : 'To'} ${item.senderName}  ·  ${item.formattedSize}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: QuickDropColors.textSecondary,
-                        fontSize: 12,
+                        color: QuickDropColors.textMuted,
+                        fontSize: 11.5,
+                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          // Actions
-          if (Platform.isLinux && fileExists) ...[
-            IconButton(
-              tooltip: 'Copy to Clipboard',
-              icon: const Icon(Icons.copy_rounded, color: QuickDropColors.cyan, size: 19),
-              onPressed: () async {
-                final ok = await LinuxIntegrations.copyImageToClipboard(item.filePath);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(ok
-                          ? '✓ Image copied to system clipboard!'
-                          : 'Failed to copy image'),
-                      duration: const Duration(seconds: 2),
-                      backgroundColor: ok ? QuickDropColors.emerald : QuickDropColors.rose,
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  StatusPill(
+                    label: item.success ? 'Complete' : 'Failed',
+                    dot: false,
+                    foreground: item.success
+                        ? QuickDropColors.emeraldDark
+                        : QuickDropColors.roseDark,
+                    background: item.success
+                        ? QuickDropColors.emeraldSoft
+                        : QuickDropColors.roseSoft,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    FileUtils.friendlyTime(item.timestamp),
+                    style: const TextStyle(
+                      color: QuickDropColors.textFaint,
+                      fontSize: 10.5,
+                      height: 1.2,
                     ),
-                  );
-                }
-              },
-            ),
-            IconButton(
-              tooltip: 'Open Image',
-              icon: const Icon(Icons.visibility_outlined,
-                  color: QuickDropColors.textSecondary, size: 19),
-              onPressed: () => LinuxIntegrations.openFile(item.filePath),
-            ),
-          ],
-        ],
+                  ),
+                ],
+              ),
+              if (!exists)
+                const Padding(
+                  padding: EdgeInsets.only(left: 6),
+                  child: Tooltip(
+                    message: 'File was moved or deleted',
+                    child: Icon(
+                      Icons.link_off_rounded,
+                      color: QuickDropColors.textFaint,
+                      size: 15,
+                    ),
+                  ),
+                ),
+              PopupMenuButton<String>(
+                tooltip: 'File actions',
+                icon: const Icon(
+                  Icons.more_horiz_rounded,
+                  size: 18,
+                  color: QuickDropColors.textMuted,
+                ),
+                padding: EdgeInsets.zero,
+                onSelected: (value) => _action(context, value, exists),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'copy_path',
+                    child: _MenuRow(
+                      icon: Icons.link_rounded,
+                      label: 'Copy file path',
+                    ),
+                  ),
+                  if (exists)
+                    const PopupMenuItem(
+                      value: 'open',
+                      child: _MenuRow(
+                        icon: Icons.open_in_new_rounded,
+                        label: 'Open file',
+                      ),
+                    ),
+                  if (exists)
+                    PopupMenuItem(
+                      value: 'folder',
+                      child: _MenuRow(
+                        icon: Icons.folder_open_rounded,
+                        label: Platform.isAndroid
+                            ? 'Show in Downloads'
+                            : 'Show in folder',
+                      ),
+                    ),
+                  if (exists && Platform.isLinux && item.isImage)
+                    const PopupMenuItem(
+                      value: 'copy_image',
+                      child: _MenuRow(
+                        icon: Icons.copy_all_rounded,
+                        label: 'Copy image',
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _fallbackIcon() {
-    return Container(
-      color: QuickDropColors.surfaceLight,
-      child: const Icon(
-        Icons.image_outlined,
-        color: QuickDropColors.textSecondary,
-      ),
+  Future<void> _action(BuildContext context, String value, bool exists) async {
+    switch (value) {
+      case 'copy_path':
+        await Clipboard.setData(ClipboardData(text: item.filePath));
+        if (context.mounted) {
+          _toast(context, 'File path copied', QuickDropColors.emeraldDark);
+        }
+        return;
+      case 'open':
+        await _open(context);
+        return;
+      case 'folder':
+        if (Platform.isAndroid) {
+          final ok = await PlatformIntegrations.openDownloads();
+          if (!ok && context.mounted) {
+            _toast(
+              context,
+              'Files are in Download/QuickDrop',
+              QuickDropColors.emeraldDark,
+            );
+          }
+          return;
+        }
+        final index = item.filePath.lastIndexOf(Platform.pathSeparator);
+        if (index > 0) {
+          await LinuxIntegrations.openFolder(item.filePath.substring(0, index));
+        }
+        return;
+      case 'copy_image':
+        final ok = await LinuxIntegrations.copyImageToClipboard(item.filePath);
+        if (context.mounted) {
+          _toast(
+            context,
+            ok ? 'Image copied to clipboard' : 'Could not copy image',
+            ok ? QuickDropColors.emeraldDark : QuickDropColors.rose,
+          );
+        }
+        return;
+    }
+  }
+
+  Future<void> _open(BuildContext context) async {
+    if (Platform.isAndroid) {
+      final target = (item.contentUri?.isNotEmpty ?? false)
+          ? item.contentUri!
+          : item.filePath;
+      final ok = await PlatformIntegrations.openFile(
+        target,
+        mimeType: FileUtils.mimeType(item.fileName),
+      );
+      if (!ok && context.mounted) {
+        _toast(context, 'No app can open this file', QuickDropColors.rose);
+      }
+      return;
+    }
+    await LinuxIntegrations.openFile(item.filePath);
+  }
+
+  void _toast(BuildContext context, String message, Color color) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              color == QuickDropColors.rose
+                  ? Icons.error_outline_rounded
+                  : Icons.check_circle_outline_rounded,
+              size: 17,
+              color: color == QuickDropColors.rose
+                  ? QuickDropColors.roseBorder
+                  : QuickDropColors.emeraldBorder,
+            ),
+            const SizedBox(width: 8),
+            Text(message),
+          ],
+        ),
+      ));
+  }
+}
+
+class _MenuRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MenuRow({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: QuickDropColors.textSecondary),
+        const SizedBox(width: 9),
+        Text(label, style: const TextStyle(fontSize: 12.5)),
+      ],
     );
   }
 }

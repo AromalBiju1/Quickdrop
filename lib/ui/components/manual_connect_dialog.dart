@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
+
+import '../../core/discovery_service.dart';
 import '../quickdrop_theme.dart';
 
 class ManualConnectDialog extends StatefulWidget {
-  final String myIp;
-  final int myPort;
-  final void Function(String ip) onConnect;
+  final DiscoveryService discovery;
 
-  const ManualConnectDialog({
-    super.key,
-    required this.myIp,
-    required this.myPort,
-    required this.onConnect,
-  });
+  const ManualConnectDialog({super.key, required this.discovery});
 
   @override
   State<ManualConnectDialog> createState() => _ManualConnectDialogState();
@@ -19,6 +14,8 @@ class ManualConnectDialog extends StatefulWidget {
 
 class _ManualConnectDialogState extends State<ManualConnectDialog> {
   final _ipController = TextEditingController();
+  bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -26,81 +23,73 @@ class _ManualConnectDialogState extends State<ManualConnectDialog> {
     super.dispose();
   }
 
+  Future<void> _connect() async {
+    final input = _ipController.text.trim();
+    if (input.isEmpty) {
+      setState(() => _error = 'Enter the other device’s IP address.');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final result = await widget.discovery.addManualPeer(input);
+    if (!mounted) return;
+
+    if (result.success) {
+      Navigator.pop(context, result);
+      return;
+    }
+    setState(() {
+      _loading = false;
+      _error = result.message;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: QuickDropColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: QuickDropColors.border),
-      ),
-      title: const Row(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 4),
+      contentPadding: const EdgeInsets.fromLTRB(22, 8, 22, 8),
+      title: Row(
         children: [
-          Icon(Icons.link_rounded, color: QuickDropColors.cyan),
-          SizedBox(width: 10),
-          Text(
-            'Direct IP Connect',
-            style: TextStyle(
-              color: QuickDropColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'If your router blocks UDP broadcast, enter your other device\'s IP address directly:',
-            style: TextStyle(color: QuickDropColors.textSecondary, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _ipController,
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(
-              color: QuickDropColors.textPrimary,
-              fontFamily: 'monospace',
-            ),
-            decoration: InputDecoration(
-              hintText: 'e.g. 192.168.1.50',
-              hintStyle: const TextStyle(color: QuickDropColors.textMuted),
-              filled: true,
-              fillColor: QuickDropColors.surfaceLight,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: QuickDropColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: QuickDropColors.cyan),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(12),
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: QuickDropColors.surfaceLight,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: QuickDropColors.border),
+              color: QuickDropColors.emeraldSoft,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
+            child: const Icon(
+              Icons.add_link_rounded,
+              color: QuickDropColors.emeraldDark,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 11),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline_rounded,
-                    color: QuickDropColors.cyan, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'This device: ${widget.myIp}:${widget.myPort}',
-                    style: const TextStyle(
-                      color: QuickDropColors.textSecondary,
-                      fontSize: 12,
-                      fontFamily: 'monospace',
-                    ),
+                Text(
+                  'Connect by IP',
+                  style: TextStyle(
+                    color: QuickDropColors.textPrimary,
+                    fontSize: 17,
+                    height: 1.3,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'For networks that block discovery.',
+                  style: TextStyle(
+                    color: QuickDropColors.textMuted,
+                    fontSize: 11,
+                    height: 1.3,
                   ),
                 ),
               ],
@@ -108,26 +97,108 @@ class _ManualConnectDialogState extends State<ManualConnectDialog> {
           ),
         ],
       ),
+      content: SizedBox(
+        width: 400,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Open QuickDrop on the other device and read its address from the Receive tab. Enter the address here.',
+                style: TextStyle(
+                  color: QuickDropColors.textSecondary,
+                  fontSize: 12.5,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _ipController,
+                autofocus: true,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.done,
+                enabled: !_loading,
+                onSubmitted: (_) => _connect(),
+                onChanged: (_) {
+                  if (_error != null) setState(() => _error = null);
+                },
+                style: const TextStyle(
+                  color: QuickDropColors.textPrimary,
+                  fontFamily: 'monospace',
+                  fontSize: 13.5,
+                ),
+                decoration: InputDecoration(
+                  hintText: '192.168.1.42 or 192.168.1.42:53318',
+                  labelText: 'Device address',
+                  errorText: _error,
+                  errorMaxLines: 3,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: QuickDropColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: QuickDropColors.border),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.computer_rounded,
+                      color: QuickDropColors.textMuted,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'This device · ${widget.discovery.localIp}:${widget.discovery.httpPort}',
+                        style: const TextStyle(
+                          color: QuickDropColors.textSecondary,
+                          fontSize: 11.5,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel',
-              style: TextStyle(color: QuickDropColors.textSecondary)),
+          onPressed: _loading ? null : () => Navigator.pop(context),
+          style: TextButton.styleFrom(
+            foregroundColor: QuickDropColors.textSecondary,
+          ),
+          child: const Text('Cancel'),
         ),
         FilledButton(
+          onPressed: _loading ? null : _connect,
           style: FilledButton.styleFrom(
-            backgroundColor: QuickDropColors.cyan,
-            foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            minimumSize: const Size(110, 44),
+            textStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          onPressed: () {
-            final ip = _ipController.text.trim();
-            if (ip.isNotEmpty) {
-              widget.onConnect(ip);
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Connect', style: TextStyle(fontWeight: FontWeight.bold)),
+          child: _loading
+              ? const SizedBox(
+                  width: 17,
+                  height: 17,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Connect'),
         ),
       ],
     );

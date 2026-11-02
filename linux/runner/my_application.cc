@@ -19,6 +19,18 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Locate the QuickDrop icon inside the Flutter asset bundle so the window and
+// task bar can display the same branding as the app itself.
+static gchar* quickdrop_icon_path() {
+  g_autofree gchar* exe_path = g_file_read_link("/proc/self/exe", nullptr);
+  if (exe_path == nullptr) {
+    return nullptr;
+  }
+  g_autofree gchar* exe_dir = g_path_get_dirname(exe_path);
+  return g_build_filename(exe_dir, "data", "flutter_assets", "assets",
+                          "images", "quickdrop_icon.png", nullptr);
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
@@ -42,14 +54,76 @@ static void my_application_activate(GApplication* application) {
     }
   }
 #endif
+  // Give the window an explicit, opaque title bar. Relying on the desktop
+  // theme produced a transparent header on some Wayland/KDE combinations,
+  // which made the minimize / maximize / close buttons effectively invisible.
+  GtkCssProvider* css_provider = gtk_css_provider_new();
+  gtk_css_provider_load_from_data(
+      css_provider,
+      "headerbar {"
+      "  background-color: #ffffff;"
+      "  background-image: none;"
+      "  color: #0f172a;"
+      "  border-bottom: 1px solid #e2e8f0;"
+      "  box-shadow: none;"
+      "  min-height: 42px;"
+      "  padding: 0 8px;"
+      "}"
+      "headerbar:backdrop { background-color: #f8fafc; color: #64748b; }"
+      "headerbar .title { color: #0f172a; font-weight: 600; }"
+      "headerbar button {"
+      "  color: #475569;"
+      "  background: transparent;"
+      "  border: none;"
+      "  box-shadow: none;"
+      "}"
+      "headerbar button:hover { background-color: #f1f5f9; }"
+      "headerbar button:active { background-color: #e2e8f0; }"
+      "headerbar button.titlebutton {"
+      "  color: #334155;"
+      "  min-width: 26px;"
+      "  min-height: 26px;"
+      "  padding: 5px;"
+      "  margin: 0 2px;"
+      "}"
+      "headerbar button.titlebutton.close:hover {"
+      "  background-color: #fee2e2;"
+      "  color: #b91c1c;"
+      "}",
+      -1, nullptr);
+  gtk_style_context_add_provider_for_screen(
+      gdk_screen_get_default(), GTK_STYLE_PROVIDER(css_provider),
+      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  g_object_unref(css_provider);
+
+  g_autofree gchar* icon_path = quickdrop_icon_path();
+  if (icon_path != nullptr) {
+    gtk_window_set_icon_from_file(window, icon_path, nullptr);
+    gtk_window_set_default_icon_from_file(icon_path, nullptr);
+  }
+
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "quickdrop");
+    gtk_header_bar_set_title(header_bar, "QuickDrop");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
+    // A leading colon places the buttons on the right side of the title bar,
+    // matching the layout used by the desktop's native window decorations.
+    gtk_header_bar_set_decoration_layout(header_bar,
+                                         ":minimize,maximize,close");
+    if (icon_path != nullptr) {
+      g_autoptr(GdkPixbuf) logo_pixbuf = gdk_pixbuf_new_from_file_at_scale(
+          icon_path, 18, 18, TRUE, nullptr);
+      if (logo_pixbuf != nullptr) {
+        GtkWidget* logo = gtk_image_new_from_pixbuf(logo_pixbuf);
+        gtk_widget_set_margin_start(logo, 8);
+        gtk_widget_show(logo);
+        gtk_header_bar_pack_start(header_bar, logo);
+      }
+    }
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "quickdrop");
+    gtk_window_set_title(window, "QuickDrop");
   }
 
   gtk_window_set_default_size(window, 1280, 720);

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
@@ -12,26 +13,18 @@ class ShareReceiver {
     if (!Platform.isAndroid && !Platform.isIOS) return;
 
     try {
-      // Listen to incoming shares while the app is in memory
       _intentSub = ReceiveSharingIntent.instance.getMediaStream().listen(
         (List<SharedMediaFile> value) {
-          if (value.isNotEmpty) {
-            final paths = value.map((f) => f.path).toList();
-            sharedFilesNotifier.value = paths;
-            if (onFilesShared != null) onFilesShared(paths);
-          }
+          _publish(value, onFilesShared);
         },
         onError: (err) {
           debugPrint('[ShareReceiver] Stream error: $err');
         },
       );
 
-      // Check for share that launched the app from cold start
-      ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
+      ReceiveSharingIntent.instance.getInitialMedia().then((value) {
+        _publish(value, onFilesShared);
         if (value.isNotEmpty) {
-          final paths = value.map((f) => f.path).toList();
-          sharedFilesNotifier.value = paths;
-          if (onFilesShared != null) onFilesShared(paths);
           ReceiveSharingIntent.instance.reset();
         }
       }).catchError((err) {
@@ -40,6 +33,27 @@ class ShareReceiver {
     } catch (e) {
       debugPrint('[ShareReceiver] Failed to init: $e');
     }
+  }
+
+  static void _publish(
+    List<SharedMediaFile> value,
+    void Function(List<String> paths)? onFilesShared,
+  ) {
+    if (value.isEmpty) return;
+    final paths = <String>[];
+    for (final file in value) {
+      if (file.path.isNotEmpty && !paths.contains(file.path)) {
+        paths.add(file.path);
+      }
+    }
+    if (paths.isEmpty) return;
+    sharedFilesNotifier.value = paths;
+    onFilesShared?.call(paths);
+  }
+
+  static void removePath(String path) {
+    final next = List<String>.from(sharedFilesNotifier.value)..remove(path);
+    sharedFilesNotifier.value = next;
   }
 
   static void clear() {
@@ -53,5 +67,6 @@ class ShareReceiver {
 
   static void dispose() {
     _intentSub?.cancel();
+    _intentSub = null;
   }
 }

@@ -46,3 +46,16 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Local desktop metadata
+.directory
+
+# Local design bundles
+/stitch_*.zip
+
+# Release artifacts kept at the repository root
+/*.apk
+/*.aab
+
+# Kotlin build metadata
+.kotlin/

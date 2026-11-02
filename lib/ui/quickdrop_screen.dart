@@ -1,26 +1,40 @@
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
+
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../core/app_store.dart';
 import '../core/discovery_service.dart';
+import '../core/file_utils.dart';
 import '../core/linux_integrations.dart';
-import '../core/share_receiver.dart';
-import '../core/transfer_client.dart';
+import '../core/platform_integrations.dart';
+import '../core/quickdrop_controller.dart';
 import '../core/transfer_server.dart';
 import '../models/device_peer.dart';
+import 'components/active_transfer_panel.dart';
 import 'components/device_card.dart';
+import 'components/file_thumb.dart';
+import 'components/help_dialog.dart';
 import 'components/manual_connect_dialog.dart';
-import 'components/radar_scanner.dart';
+import 'components/qr_dialog.dart';
+import 'components/receive_card.dart';
+import 'components/send_panel.dart';
+import 'components/send_result_panel.dart';
+import 'components/settings_dialog.dart';
 import 'components/transfer_history_tile.dart';
 import 'quickdrop_theme.dart';
 
 class QuickDropScreen extends StatefulWidget {
   final DiscoveryService discoveryService;
   final TransferServer transferServer;
+  final AppSettings settings;
 
   const QuickDropScreen({
     super.key,
     required this.discoveryService,
     required this.transferServer,
+    required this.settings,
   });
 
   @override
@@ -28,184 +42,1121 @@ class QuickDropScreen extends StatefulWidget {
 }
 
 class _QuickDropScreenState extends State<QuickDropScreen> {
-  String? _sendingPeerId;
-  double _uploadProgress = 0.0;
-  List<String> _pendingSharePaths = [];
+  late final QuickDropController _controller;
+  final ScrollController _scrollController = ScrollController();
+  bool _dragging = false;
+  int _tab = const int.fromEnvironment('QUICKDROP_TAB', defaultValue: 0);
+  int _historyFilter = 0;
+  SendSummary? _lastSummary;
 
   @override
   void initState() {
     super.initState();
-    // Listen for incoming Android share sheet intents
-    ShareReceiver.sharedFilesNotifier.addListener(_onSharedFilesChanged);
-    _pendingSharePaths = List<String>.from(ShareReceiver.sharedFilesNotifier.value);
+    _controller = QuickDropController(
+      discovery: widget.discoveryService,
+      server: widget.transferServer,
+      settings: widget.settings,
+    );
+    _controller.summaryNotifier.addListener(_onSendSummary);
   }
 
   @override
   void dispose() {
-    ShareReceiver.sharedFilesNotifier.removeListener(_onSharedFilesChanged);
+    _controller.summaryNotifier.removeListener(_onSendSummary);
+    _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  void _onSharedFilesChanged() {
-    if (mounted) {
-      setState(() {
-        _pendingSharePaths = List<String>.from(ShareReceiver.sharedFilesNotifier.value);
-      });
+  void _onSendSummary() {
+    final summary = _controller.summaryNotifier.value;
+    if (summary == null) return;
+    _controller.summaryNotifier.value = null;
+    if (!mounted) return;
+    setState(() => _lastSummary = summary);
+  }
+
+  Future<void> _pickFiles({bool imagesOnly = false}) async {
+    final result = await _controller.pickFiles(imagesOnly: imagesOnly);
+    if (!mounted) return;
+    if (result.added > 0) {
+      setState(() => _lastSummary = null);
+      _toast(
+        '${result.added} file${result.added == 1 ? '' : 's'} ready to send',
+        icon: Icons.attach_file_rounded,
+        color: QuickDropColors.emerald,
+      );
+    } else if (result.skipped > 0) {
+      _toast(
+        'Some files could not be added',
+        icon: Icons.warning_amber_rounded,
+        color: QuickDropColors.amberBorder,
+      );
     }
   }
 
-  Future<void> _sendToPeer(DevicePeer peer, {String? specificPath}) async {
-    File? fileToSend;
+  Future<void> _addPaths(List<String> paths) async {
+    final result = await _controller.addPaths(paths);
+    if (!mounted) return;
+    if (result.added > 0) {
+      setState(() => _lastSummary = null);
+      _toast(
+        '${result.added} file${result.added == 1 ? '' : 's'} added',
+        icon: Icons.add_rounded,
+        color: QuickDropColors.emerald,
+      );
+    }
+  }
 
-    if (specificPath != null) {
-      fileToSend = File(specificPath);
-    } else if (_pendingSharePaths.isNotEmpty) {
-      fileToSend = File(_pendingSharePaths.first);
+  Future<void> _sendToPeer(DevicePeer peer) async {
+    _controller.selectPeer(peer);
+    if (!_controller.hasSelection) {
+      await _controller.pickFiles();
+      if (!_controller.hasSelection) return;
+    }
+    if (!mounted) return;
+    setState(() => _lastSummary = null);
+    await _controller.sendToPeer(peer);
+  }
+
+  void _sendSelected() {
+    final peer = _controller.selectedPeer;
+    if (peer == null) return;
+    setState(() => _lastSummary = null);
+    _controller.sendToPeer(peer);
+  }
+
+  Future<void> _openManualConnect() async {
+    final result = await showDialog<ManualPeerResult>(
+      context: context,
+      builder: (context) =>
+          ManualConnectDialog(discovery: _controller.discovery),
+    );
+    if (!mounted || result == null) return;
+    _toast(
+      result.message,
+      icon: result.success ? Icons.link_rounded : Icons.error_outline_rounded,
+      color: result.success
+          ? QuickDropColors.emerald
+          : QuickDropColors.roseBorder,
+    );
+  }
+
+  Future<void> _openSettings() async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => SettingsDialog(
+        controller: _controller,
+        onOpenFolder: _openReceivedFolder,
+      ),
+    );
+    if (saved == true && mounted) {
+      _toast(
+        'Settings saved',
+        icon: Icons.check_rounded,
+        color: QuickDropColors.emerald,
+      );
+    }
+  }
+
+  void _openHelp() {
+    showDialog(
+      context: context,
+      builder: (context) => HelpDialog(discovery: _controller.discovery),
+    );
+  }
+
+  Future<void> _openBrowser() async {
+    final opened = await PlatformIntegrations.openUrl(_controller.webUrl);
+    if (!opened && mounted) {
+      _toast(
+        'Open ${_controller.webUrl} on the other device',
+        icon: Icons.language_rounded,
+        color: QuickDropColors.emerald,
+      );
+    }
+  }
+
+  void _showQr() {
+    showDialog(
+      context: context,
+      builder: (context) => QrDialog(
+        webUrl: _controller.webUrl,
+        deviceName: _controller.settings.deviceName,
+        onOpenBrowser: () {
+          Navigator.pop(context);
+          _openBrowser();
+        },
+      ),
+    );
+  }
+
+  Future<void> _openReceivedFolder() async {
+    if (Platform.isAndroid) {
+      final opened = await PlatformIntegrations.openDownloads();
+      if (!mounted) return;
+      if (!opened) {
+        _toast(
+          'Received files: Download/QuickDrop',
+          icon: Icons.folder_rounded,
+          color: QuickDropColors.emerald,
+        );
+      }
+      return;
+    }
+    final dir = await _controller.server.getLastSaveDirectory();
+    if (!mounted) return;
+    if (Platform.isLinux) {
+      await LinuxIntegrations.openFolder(dir.path);
     } else {
-      final picked = await FilePicker.pickFile(type: FileType.image);
-      if (picked != null && picked.path != null) {
-        fileToSend = File(picked.path!);
+      _toast(
+        'Received files: ${dir.path}',
+        icon: Icons.folder_rounded,
+        color: QuickDropColors.emerald,
+      );
+    }
+  }
+
+  Future<void> _confirmClearHistory() async {
+    final clear = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Clear transfer history?',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+        ),
+        content: const Text(
+          'This only clears the list. Files already received stay on disk.',
+          style: TextStyle(
+            color: QuickDropColors.textSecondary,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              foregroundColor: QuickDropColors.textSecondary,
+            ),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: QuickDropColors.rose,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(88, 42),
+            ),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (clear == true) {
+      _controller.clearHistory();
+      if (mounted) {
+        _toast(
+          'History cleared',
+          icon: Icons.delete_outline_rounded,
+          color: QuickDropColors.amberBorder,
+        );
       }
     }
+  }
 
-    if (fileToSend == null || !await fileToSend.exists()) return;
-    final fileSize = await fileToSend.length();
-
-    setState(() {
-      _sendingPeerId = peer.id;
-      _uploadProgress = 0.0;
-    });
-
-    final res = await TransferClient.sendPhoto(
-      targetPeer: peer,
-      file: fileToSend,
-      senderName: widget.discoveryService.deviceName,
-      onProgress: (p) {
-        if (mounted) setState(() => _uploadProgress = p);
-      },
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _sendingPeerId = null;
-      _uploadProgress = 0.0;
-    });
-
-    if (res.success) {
-      // Clear pending share path once sent
-      if (_pendingSharePaths.isNotEmpty) {
-        ShareReceiver.clear();
-      }
-
-      // Add to transfer server history
-      widget.transferServer.addOutgoingHistory(
-        TransferItem(
-          id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
-          fileName: fileToSend.path.split(Platform.isWindows ? '\\' : '/').last,
-          fileSize: fileSize,
-          filePath: fileToSend.path,
-          senderName: peer.name,
-          isIncoming: false,
-          timestamp: DateTime.now(),
-          success: true,
+  Future<void> _confirmCancelTransfer() async {
+    final progress = _controller.progress;
+    final canceled = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Cancel transfer?',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
         ),
-      );
+        content: Text(
+          progress == null
+              ? 'Files already delivered stay on the other device.'
+              : '${FileUtils.formatBytes(progress.sentBytes)} of ${FileUtils.formatBytes(progress.totalBytes)} already sent. Files already delivered stay on the other device.',
+          style: const TextStyle(
+            color: QuickDropColors.textSecondary,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              foregroundColor: QuickDropColors.textSecondary,
+            ),
+            child: const Text('Keep transferring'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: QuickDropColors.rose,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(88, 42),
+            ),
+            child: const Text('Cancel transfer'),
+          ),
+        ],
+      ),
+    );
+    if (canceled == true) _controller.cancelTransfer();
+  }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.black, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
+  void _selectTab(int index) {
+    if (_tab == index) return;
+    setState(() => _tab = index);
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
+  void _viewAllTransfers({int filter = 0}) {
+    setState(() {
+      _historyFilter = filter;
+      _tab = 2;
+    });
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  }
+
+  void _toast(
+    String message, {
+    IconData icon = Icons.info_outline_rounded,
+    Color color = QuickDropColors.emerald,
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        duration: const Duration(seconds: 3),
+        content: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: QuickDropColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: DropTarget(
+          onDragEntered: (_) => setState(() => _dragging = true),
+          onDragExited: (_) => setState(() => _dragging = false),
+          onDragDone: (details) async {
+            setState(() => _dragging = false);
+            await _addPaths(details.files.map((file) => file.path).toList());
+          },
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              final width = MediaQuery.sizeOf(context).width;
+              final compact = width < 820;
+              final twoColumn = width >= 980;
+              final peers = _controller.discovery.peersNotifier.value;
+
+              return Stack(
+                children: [
+                  Column(
+                    children: [
+                      _buildHeader(compact, peers, width),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: EdgeInsets.fromLTRB(
+                            compact ? 16 : 32,
+                            compact ? 20 : 28,
+                            compact ? 16 : 32,
+                            compact ? 28 : 40,
+                          ),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 1120),
+                              child: _buildTabContent(twoColumn),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (compact) _buildBottomNav(),
+                    ],
+                  ),
+                  if (_dragging) _buildDropOverlay(),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(bool compact, List<DevicePeer> peers, double width) {
+    final running = _controller.server.isRunningNotifier.value;
+    final scanning = _controller.discovery.isScanningNotifier.value;
+
+    String status;
+    Color statusFg;
+    Color statusBg;
+    if (!running) {
+      status = compact ? 'Offline' : 'Receiver offline';
+      statusFg = QuickDropColors.roseDark;
+      statusBg = QuickDropColors.roseSoft;
+    } else if (peers.isNotEmpty) {
+      status = compact
+          ? '${peers.length} nearby'
+          : '${peers.length} device${peers.length == 1 ? '' : 's'} nearby';
+      statusFg = QuickDropColors.emeraldDark;
+      statusBg = QuickDropColors.emeraldSoft;
+    } else if (scanning) {
+      status = compact ? 'Scanning' : 'Scanning nearby';
+      statusFg = QuickDropColors.emeraldDark;
+      statusBg = QuickDropColors.emeraldSoft;
+    } else {
+      status = compact ? 'Ready' : 'Ready to receive';
+      statusFg = QuickDropColors.emeraldDark;
+      statusBg = QuickDropColors.emeraldSoft;
+    }
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: QuickDropColors.surface,
+        border: Border(
+          bottom: BorderSide(color: QuickDropColors.border),
+        ),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 16 : 28,
+      ),
+      height: compact ? 64 : 72,
+      child: Row(
+        children: [
+          const QuickDropLogo(size: 34),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'QuickDrop',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: QuickDropColors.textPrimary,
+                    fontSize: 17,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                if (!compact)
+                  const Text(
+                    'Local file transfer',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: QuickDropColors.textMuted,
+                      fontSize: 10.5,
+                      height: 1.2,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (!compact) ...[
+            const SizedBox(width: 20),
+            _buildDesktopNav(),
+          ],
+          const SizedBox(width: 8),
+          StatusPill(
+            label: status,
+            foreground: statusFg,
+            background: statusBg,
+          ),
+          const SizedBox(width: 6),
+          _headerIcon(
+            icon: Icons.help_outline_rounded,
+            tooltip: 'Offline & connection help',
+            onTap: _openHelp,
+          ),
+          _headerIcon(
+            icon: Icons.tune_rounded,
+            tooltip: 'Settings',
+            onTap: _openSettings,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopNav() {
+    const labels = ['Send', 'Receive', 'Transfers'];
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: QuickDropColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < labels.length; i++)
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _selectTab(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: _tab == i
+                      ? QuickDropColors.surface
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _tab == i
+                        ? QuickDropColors.border
+                        : Colors.transparent,
+                  ),
+                  boxShadow: _tab == i ? QuickDropColors.cardShadow : null,
+                ),
                 child: Text(
-                  '✓ ${res.message}! Sent to ${peer.name}',
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
+                  labels[i],
+                  style: TextStyle(
+                    color: _tab == i
+                        ? QuickDropColors.textPrimary
+                        : QuickDropColors.textMuted,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _headerIcon({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onTap,
+        style: IconButton.styleFrom(
+          minimumSize: const Size(36, 36),
+          maximumSize: const Size(36, 36),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9),
+          ),
+        ),
+        icon: Icon(
+          icon,
+          size: 19,
+          color: QuickDropColors.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    const items = [
+      (label: 'Send', icon: Icons.near_me_rounded),
+      (label: 'Receive', icon: Icons.download_for_offline_rounded),
+      (label: 'Transfers', icon: Icons.sync_alt_rounded),
+    ];
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: QuickDropColors.surface,
+        border: Border(
+          top: BorderSide(color: QuickDropColors.border),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 62,
+          child: Row(
+            children: [
+              for (var i = 0; i < items.length; i++)
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _selectTab(i),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          items[i].icon,
+                          size: 22,
+                          color: _tab == i
+                              ? QuickDropColors.emeraldDark
+                              : QuickDropColors.textMuted,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          items[i].label,
+                          style: TextStyle(
+                            color: _tab == i
+                                ? QuickDropColors.emeraldDark
+                                : QuickDropColors.textMuted,
+                            fontSize: 11,
+                            height: 1.2,
+                            fontWeight: _tab == i
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
-          backgroundColor: QuickDropColors.emerald,
-          duration: const Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
         ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✕ ${res.message}'),
-          backgroundColor: QuickDropColors.rose,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ),
+    );
+  }
+
+  Widget _buildTabContent(bool twoColumn) {
+    switch (_tab) {
+      case 1:
+        return _buildReceiveTab();
+      case 2:
+        return _buildTransfersTab();
+      default:
+        return _buildSendTab(twoColumn);
     }
   }
 
-  Future<void> _pickAndSendBroadcast() async {
-    final peers = widget.discoveryService.peersNotifier.value;
-    if (peers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No peers discovered yet. Waiting for device on Wi-Fi...'),
-          backgroundColor: QuickDropColors.amber,
-        ),
+  Widget _buildSendTab(bool twoColumn) {
+    final peers = _controller.discovery.peersNotifier.value;
+
+    if (_controller.isSending && _controller.progress != null) {
+      final peer = _controller.selectedPeer;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _pageHeading(
+            'Sending to ${peer?.name ?? 'device'}',
+            'Keep both devices on the same network until the transfer finishes.',
+            trailing: const StatusPill(label: 'Active'),
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: ActiveTransferPanel(
+                controller: _controller,
+                onCancel: _confirmCancelTransfer,
+              ),
+            ),
+          ),
+        ],
       );
-      return;
     }
 
-    final picked = await FilePicker.pickFile(type: FileType.image);
-    if (!mounted) return;
-
-    if (picked != null && picked.path != null) {
-      if (peers.length == 1) {
-        await _sendToPeer(peers.first, specificPath: picked.path);
-      } else {
-        _showPeerSelectionDialog(picked.path!);
-      }
+    if (_lastSummary != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _pageHeading(
+            'Send',
+            'Transfer finished. Review the result below.',
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: SendResultPanel(
+                summary: _lastSummary!,
+                onDone: () => setState(() => _lastSummary = null),
+                onSecondary: () {
+                  final success = _lastSummary!.allSent;
+                  setState(() => _lastSummary = null);
+                  if (success) _pickFiles();
+                },
+              ),
+            ),
+          ),
+        ],
+      );
     }
+
+    final filesPanel = SendPanel(
+      controller: _controller,
+      onPickFiles: () => _pickFiles(),
+      onPickImages: () => _pickFiles(imagesOnly: true),
+      onConnect: _openManualConnect,
+      onSend: _sendSelected,
+    );
+    final devices = _buildDevicesSection(peers);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _pageHeading(
+          'Send',
+          'Move files directly to a device on your network.',
+        ),
+        const SizedBox(height: 20),
+        if (twoColumn)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 5, child: filesPanel),
+              const SizedBox(width: 24),
+              Expanded(flex: 4, child: devices),
+            ],
+          )
+        else ...[
+          filesPanel,
+          const SizedBox(height: 26),
+          devices,
+        ],
+      ],
+    );
   }
 
-  void _showPeerSelectionDialog(String filePath) {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: QuickDropColors.surface,
-          title: const Text('Select Destination Device',
-              style: TextStyle(color: QuickDropColors.textPrimary)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ValueListenableBuilder<List<DevicePeer>>(
-              valueListenable: widget.discoveryService.peersNotifier,
-              builder: (context, peers, _) {
-                return ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: peers.length,
-                  itemBuilder: (context, i) {
-                    final p = peers[i];
-                    return ListTile(
-                      leading: Icon(
-                        p.isDesktop
-                            ? Icons.laptop_chromebook_rounded
-                            : Icons.phone_android_rounded,
-                        color: QuickDropColors.cyan,
-                      ),
-                      title: Text(p.name,
-                          style: const TextStyle(color: QuickDropColors.textPrimary)),
-                      subtitle: Text('${p.ip}:${p.httpPort}',
-                          style: const TextStyle(color: QuickDropColors.textSecondary)),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _sendToPeer(p, specificPath: filePath);
-                      },
+  Widget _buildDevicesSection(List<DevicePeer> peers) {
+    final scanning = _controller.discovery.isScanningNotifier.value;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionLabel(
+          title: 'Nearby devices',
+          subtitle: peers.isEmpty
+              ? 'Both devices need to be on the same Wi-Fi or hotspot.'
+              : 'Select a device, then send when you are ready.',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _outlineIcon(
+                icon: Icons.refresh_rounded,
+                tooltip: 'Scan again',
+                onTap: () async {
+                  await _controller.refresh();
+                  if (mounted) {
+                    _toast(
+                      'Scanning the local network…',
+                      icon: Icons.wifi_find_rounded,
+                      color: QuickDropColors.emerald,
                     );
-                  },
+                  }
+                },
+              ),
+              const SizedBox(width: 6),
+              _outlineIcon(
+                icon: Icons.add_link_rounded,
+                tooltip: 'Connect by IP',
+                onTap: _openManualConnect,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (peers.isEmpty)
+          _buildEmptyDevices(scanning)
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: QuickDropColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: QuickDropColors.border),
+              boxShadow: QuickDropColors.cardShadow,
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < peers.length; i++) ...[
+                  if (i > 0)
+                    const Divider(
+                      height: 1,
+                      indent: 66,
+                      color: QuickDropColors.surfaceSubtle,
+                    ),
+                  DeviceCard(
+                    peer: peers[i],
+                    selected: _controller.hasSelection &&
+                        _controller.selectedPeer?.id == peers[i].id,
+                    isSending: _controller.sendingPeerId == peers[i].id,
+                    onSelect: () => _controller.selectPeer(peers[i]),
+                    onSend: () => _sendToPeer(peers[i]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        if (peers.isNotEmpty && scanning)
+          Padding(
+            padding: const EdgeInsets.only(top: 9, left: 2),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 11,
+                  height: 11,
+                  child: CircularProgressIndicator(strokeWidth: 1.4),
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  'Still looking for more devices…',
+                  style: TextStyle(
+                    color: QuickDropColors.textMuted.withValues(alpha: 0.9),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyDevices(bool scanning) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
+      decoration: BoxDecoration(
+        color: QuickDropColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: QuickDropColors.border),
+        boxShadow: QuickDropColors.cardShadow,
+      ),
+      child: Column(
+        children: [
+          const EmptyStateIcon(icon: Icons.devices_other_rounded, size: 84),
+          const SizedBox(height: 16),
+          const Text(
+            'No devices found',
+            style: TextStyle(
+              color: QuickDropColors.textPrimary,
+              fontSize: 15,
+              height: 1.3,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Make sure QuickDrop is open on the other device and both are on the same Wi-Fi or hotspot.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: QuickDropColors.textMuted,
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
+          if (scanning) ...[
+            const SizedBox(height: 12),
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 1.5),
+                ),
+                SizedBox(width: 7),
+                Text(
+                  'Scanning your network…',
+                  style: TextStyle(
+                    color: QuickDropColors.textMuted,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: _openManualConnect,
+                icon: const Icon(Icons.add_link_rounded, size: 16),
+                label: const Text('Connect by IP'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              OutlinedButton(
+                onPressed: () => _controller.refresh(),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Scan again'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          TextButton(
+            onPressed: () => _selectTab(1),
+            style: TextButton.styleFrom(
+              textStyle: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            child: const Text('Receive files instead'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReceiveTab() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _pageHeading(
+              'Receive',
+              'Let another device send files to this one. No app needed.',
+              trailing: StatusPill(
+                label: _controller.server.isRunningNotifier.value
+                    ? 'Ready to receive'
+                    : 'Receiver offline',
+                foreground: _controller.server.isRunningNotifier.value
+                    ? QuickDropColors.emeraldDark
+                    : QuickDropColors.roseDark,
+                background: _controller.server.isRunningNotifier.value
+                    ? QuickDropColors.emeraldSoft
+                    : QuickDropColors.roseSoft,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ReceiveCard(
+              webUrl: _controller.webUrl,
+              deviceName: _controller.settings.deviceName,
+              onCopy: () async {
+                await Clipboard.setData(
+                  ClipboardData(text: _controller.webUrl),
                 );
+                if (mounted) {
+                  _toast(
+                    'Receiver URL copied',
+                    icon: Icons.copy_rounded,
+                    color: QuickDropColors.emerald,
+                  );
+                }
               },
+              onOpenBrowser: _openBrowser,
+              onShowQr: _showQr,
+              onOpenFolder: _openReceivedFolder,
+              onHelp: _openHelp,
+            ),
+            const SizedBox(height: 14),
+            const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Icon(
+                    Icons.wifi_rounded,
+                    size: 15,
+                    color: QuickDropColors.textFaint,
+                  ),
+                ),
+                SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    'Devices must share a Wi-Fi network or hotspot. No internet connection is involved.',
+                    style: TextStyle(
+                      color: QuickDropColors.textMuted,
+                      fontSize: 11.5,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            _buildRecentReceived(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentReceived() {
+    return ValueListenableBuilder<List<TransferItem>>(
+      valueListenable: _controller.server.historyNotifier,
+      builder: (context, history, _) {
+        final incoming =
+            history.where((item) => item.isIncoming).take(4).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SectionLabel(
+              title: 'Recently received',
+              subtitle: incoming.isEmpty
+                  ? 'Incoming files will appear here.'
+                  : '${incoming.length} latest file${incoming.length == 1 ? '' : 's'} on this device.',
+              trailing: history.isEmpty
+                  ? null
+                  : TextButton(
+                      onPressed: () => _viewAllTransfers(filter: 2),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        textStyle: const TextStyle(fontSize: 11.5),
+                      ),
+                      child: const Text('View all'),
+                    ),
+            ),
+            const SizedBox(height: 10),
+            if (incoming.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 20,
+                ),
+                decoration: BoxDecoration(
+                  color: QuickDropColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: QuickDropColors.border),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.inbox_outlined,
+                      color: QuickDropColors.textFaint,
+                      size: 22,
+                    ),
+                    SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        'Nothing received yet. Share the browser address or QR code above to get started.',
+                        style: TextStyle(
+                          color: QuickDropColors.textMuted,
+                          fontSize: 12,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  color: QuickDropColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: QuickDropColors.border),
+                  boxShadow: QuickDropColors.cardShadow,
+                ),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < incoming.length; i++) ...[
+                      if (i > 0)
+                        const Divider(
+                          height: 1,
+                          indent: 66,
+                          color: QuickDropColors.surfaceSubtle,
+                        ),
+                      TransferHistoryTile(item: incoming[i]),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTransfersTab() {
+    return ValueListenableBuilder<List<TransferItem>>(
+      valueListenable: _controller.server.historyNotifier,
+      builder: (context, history, _) {
+        final filtered = switch (_historyFilter) {
+          1 => history.where((item) => !item.isIncoming).toList(),
+          2 => history.where((item) => item.isIncoming).toList(),
+          _ => history,
+        };
+
+        final groups = _groupHistory(filtered);
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 820),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _pageHeading(
+                  'Transfers',
+                  'Files sent and received on this device.',
+                  trailing: history.isEmpty
+                      ? null
+                      : _outlineIcon(
+                          icon: Icons.delete_sweep_outlined,
+                          tooltip: 'Clear history',
+                          onTap: _confirmClearHistory,
+                        ),
+                ),
+                const SizedBox(height: 18),
+                _buildFilterBar(),
+                const SizedBox(height: 22),
+                if (filtered.isEmpty)
+                  _buildEmptyHistory()
+                else
+                  for (var i = 0; i < groups.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 22),
+                    _buildHistoryGroup(groups[i]),
+                  ],
+              ],
             ),
           ),
         );
@@ -213,450 +1164,311 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
+  Widget _buildFilterBar() {
+    const labels = ['All', 'Sent', 'Received'];
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 360),
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: QuickDropColors.surfaceSubtle,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: QuickDropColors.cyan.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: QuickDropColors.cyan.withValues(alpha: 0.3)),
-              ),
-              child: const Icon(Icons.bolt_rounded,
-                  color: QuickDropColors.cyan, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'QuickDrop',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
+            for (var i = 0; i < labels.length; i++)
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => setState(() => _historyFilter = i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    curve: Curves.easeOut,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: _historyFilter == i
+                          ? QuickDropColors.surface
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _historyFilter == i
+                            ? QuickDropColors.border
+                            : Colors.transparent,
+                      ),
+                      boxShadow: _historyFilter == i
+                          ? QuickDropColors.cardShadow
+                          : null,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      labels[i],
+                      style: TextStyle(
+                        color: _historyFilter == i
+                            ? QuickDropColors.textPrimary
+                            : QuickDropColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-                ValueListenableBuilder<String>(
-                  valueListenable: widget.discoveryService.localIpNotifier,
-                  builder: (context, ip, _) {
-                    return Text(
-                      '${widget.discoveryService.deviceName} • $ip',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: QuickDropColors.textMuted,
-                        fontFamily: 'monospace',
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+              ),
           ],
         ),
-        actions: [
-          // Open Screenshots Folder on Linux
-          if (Platform.isLinux)
-            IconButton(
-              tooltip: 'Open Screenshots Folder',
-              icon: const Icon(Icons.folder_open_rounded,
-                  color: QuickDropColors.textSecondary),
-              onPressed: () async {
-                final dir = await widget.transferServer.getSaveDirectory();
-                await LinuxIntegrations.openFolder(dir.path);
-              },
-            ),
-          // Direct IP Connect Dialog
-          IconButton(
-            tooltip: 'Direct IP Connect',
-            icon: const Icon(Icons.add_link_rounded,
-                color: QuickDropColors.textSecondary),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => ManualConnectDialog(
-                  myIp: widget.discoveryService.localIpNotifier.value,
-                  myPort: widget.discoveryService.httpPort,
-                  onConnect: (ip) {
-                    widget.discoveryService.addManualPeer(ip);
-                  },
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 1. Radar scanner header
-                  ValueListenableBuilder<List<DevicePeer>>(
-                    valueListenable: widget.discoveryService.peersNotifier,
-                    builder: (context, peers, _) {
-                      return RadarScanner(
-                        isScanning: true,
-                        discoveredCount: peers.length,
-                        onRefresh: () {
-                          widget.discoveryService.broadcastPresence();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Broadcasting discovery beacon...'),
-                              duration: Duration(seconds: 1),
-                              backgroundColor: QuickDropColors.surfaceLight,
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+    );
+  }
 
-                  // 2. Pending Android Share Sheet Banner
-                  if (_pendingSharePaths.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _buildPendingShareBanner(),
-                  ],
-
-                  // 3. Upload Progress Indicator
-                  if (_sendingPeerId != null) ...[
-                    const SizedBox(height: 16),
-                    _buildUploadProgressBar(),
-                  ],
-
-                  // 4. Discovered Peers Section
-                  const SizedBox(height: 24),
-                  const Text(
-                    'DISCOVERED PEERS',
-                    style: TextStyle(
-                      color: QuickDropColors.textMuted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
+  Widget _buildHistoryGroup(_HistoryGroup group) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 8),
+          child: Text(
+            group.label.toUpperCase(),
+            style: const TextStyle(
+              color: QuickDropColors.textMuted,
+              fontSize: 10.5,
+              height: 1.2,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
             ),
           ),
-
-          // Discovered Peers List
-          ValueListenableBuilder<List<DevicePeer>>(
-            valueListenable: widget.discoveryService.peersNotifier,
-            builder: (context, peers, _) {
-              if (peers.isEmpty) {
-                return SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _buildEmptyPeersCard(),
-                  ),
-                );
-              }
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final peer = peers[index];
-                      return DeviceCard(
-                        peer: peer,
-                        isSending: _sendingPeerId == peer.id,
-                        onSend: () => _sendToPeer(peer),
-                      );
-                    },
-                    childCount: peers.length,
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // Transfer History Section
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'RECENT TRANSFERS',
-                    style: TextStyle(
-                      color: QuickDropColors.textMuted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  if (Platform.isLinux)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(50, 24),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      onPressed: () async {
-                        final dir = await widget.transferServer.getSaveDirectory();
-                        await LinuxIntegrations.openFolder(dir.path);
-                      },
-                      child: const Text(
-                        'Open Folder',
-                        style: TextStyle(
-                          color: QuickDropColors.cyan,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-
-          // History List
-          ValueListenableBuilder<List<TransferItem>>(
-            valueListenable: widget.transferServer.historyNotifier,
-            builder: (context, history, _) {
-              if (history.isEmpty) {
-                return SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: QuickDropColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: QuickDropColors.border),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'No screenshots sent or received yet.',
-                          style: TextStyle(
-                            color: QuickDropColors.textMuted,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      return TransferHistoryTile(item: history[index]);
-                    },
-                    childCount: history.length,
-                  ),
-                ),
-              );
-            },
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: QuickDropColors.cyan,
-        foregroundColor: Colors.black,
-        elevation: 6,
-        icon: const Icon(Icons.add_photo_alternate_rounded),
-        label: const Text(
-          'Pick Screenshot',
-          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        onPressed: _pickAndSendBroadcast,
-      ),
-    );
-  }
-
-  Widget _buildPendingShareBanner() {
-    final path = _pendingSharePaths.first;
-    final file = File(path);
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: QuickDropColors.indigo.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: QuickDropColors.indigo.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: file.existsSync()
-                  ? Image.file(file, fit: BoxFit.cover)
-                  : const Icon(Icons.image, color: QuickDropColors.indigo),
-            ),
+        Container(
+          decoration: BoxDecoration(
+            color: QuickDropColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: QuickDropColors.border),
+            boxShadow: QuickDropColors.cardShadow,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Screenshot Ready to Beam',
-                  style: TextStyle(
-                    color: QuickDropColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  path.split(Platform.isWindows ? '\\' : '/').last,
-                  style: const TextStyle(
-                    color: QuickDropColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: 'Clear',
-            icon: const Icon(Icons.close_rounded,
-                color: QuickDropColors.textSecondary, size: 20),
-            onPressed: () {
-              ShareReceiver.clear();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUploadProgressBar() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: QuickDropColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: QuickDropColors.cyan.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
             children: [
-              const Text(
-                'Beaming screenshot...',
-                style: TextStyle(
-                  color: QuickDropColors.cyan,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                '${(_uploadProgress * 100).toInt()}%',
-                style: const TextStyle(
-                  color: QuickDropColors.cyan,
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              for (var i = 0; i < group.items.length; i++) ...[
+                if (i > 0)
+                  const Divider(
+                    height: 1,
+                    indent: 66,
+                    color: QuickDropColors.surfaceSubtle,
+                  ),
+                TransferHistoryTile(item: group.items[i]),
+              ],
             ],
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: _uploadProgress > 0 ? _uploadProgress : null,
-              backgroundColor: QuickDropColors.surfaceLight,
-              valueColor: const AlwaysStoppedAnimation<Color>(QuickDropColors.cyan),
-              minHeight: 6,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildEmptyPeersCard() {
+  Widget _buildEmptyHistory() {
+    final received = _historyFilter == 2;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      padding: const EdgeInsets.fromLTRB(22, 34, 22, 28),
       decoration: BoxDecoration(
         color: QuickDropColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: QuickDropColors.border),
+        boxShadow: QuickDropColors.cardShadow,
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: QuickDropColors.surfaceLight,
-              border: Border.all(color: QuickDropColors.border),
-            ),
-            child: const Icon(
-              Icons.devices_other_rounded,
-              size: 32,
-              color: QuickDropColors.textMuted,
-            ),
-          ),
+          const EmptyStateIcon(icon: Icons.sync_alt_rounded, size: 84),
           const SizedBox(height: 16),
-          const Text(
-            'No nearby devices detected yet',
-            style: TextStyle(
+          Text(
+            received ? 'No received files yet' : 'No transfers yet',
+            style: const TextStyle(
               color: QuickDropColors.textPrimary,
               fontSize: 15,
+              height: 1.3,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Keep QuickDrop open on your other device.\nMake sure both devices are on the same Wi-Fi or phone hotspot.',
+          const SizedBox(height: 4),
+          Text(
+            received
+                ? 'Files sent to this device will show up here with a quick open action.'
+                : 'Send a file to a nearby device, or receive one through the browser receiver.',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: QuickDropColors.textMuted,
               fontSize: 12,
-              height: 1.4,
+              height: 1.5,
             ),
           ),
           const SizedBox(height: 16),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: QuickDropColors.cyan,
-              side: const BorderSide(color: QuickDropColors.border),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          FilledButton(
+            onPressed: () => _selectTab(received ? 1 : 0),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 40),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              textStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            icon: const Icon(Icons.add_link_rounded, size: 16),
-            label: const Text('Connect via IP manually'),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => ManualConnectDialog(
-                  myIp: widget.discoveryService.localIpNotifier.value,
-                  myPort: widget.discoveryService.httpPort,
-                  onConnect: (ip) {
-                    widget.discoveryService.addManualPeer(ip);
-                  },
-                ),
-              );
-            },
+            child: Text(received ? 'Open Receive' : 'Send files'),
           ),
         ],
       ),
     );
   }
+
+  Widget _pageHeading(String title, String subtitle, {Widget? trailing}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: QuickDropColors.textPrimary,
+                  fontSize: 24,
+                  height: 1.2,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.7,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: QuickDropColors.textMuted,
+                  fontSize: 12.5,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (trailing != null) ...[
+          const SizedBox(width: 12),
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: trailing,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _outlineIcon({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onTap,
+        style: IconButton.styleFrom(
+          minimumSize: const Size(36, 36),
+          maximumSize: const Size(36, 36),
+          backgroundColor: QuickDropColors.surface,
+          side: const BorderSide(color: QuickDropColors.border),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9),
+          ),
+        ),
+        icon: Icon(icon, size: 17, color: QuickDropColors.textSecondary),
+      ),
+    );
+  }
+
+  Widget _buildDropOverlay() {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Container(
+          color: QuickDropColors.background.withValues(alpha: 0.86),
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 42,
+                vertical: 36,
+              ),
+              decoration: BoxDecoration(
+                color: QuickDropColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: QuickDropColors.emerald,
+                  width: 1.5,
+                ),
+                boxShadow: QuickDropColors.raisedShadow,
+              ),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.file_download_outlined,
+                    color: QuickDropColors.emeraldDark,
+                    size: 36,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Drop to add files',
+                    style: TextStyle(
+                      color: QuickDropColors.textPrimary,
+                      fontSize: 17,
+                      height: 1.3,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Multiple files are supported',
+                    style: TextStyle(
+                      color: QuickDropColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<_HistoryGroup> _groupHistory(List<TransferItem> items) {
+    final now = DateTime.now();
+    final today = <TransferItem>[];
+    final yesterday = <TransferItem>[];
+    final earlier = <TransferItem>[];
+
+    bool sameDay(DateTime a, DateTime b) =>
+        a.year == b.year && a.month == b.month && a.day == b.day;
+
+    final yesterdayDate = now.subtract(const Duration(days: 1));
+    for (final item in items) {
+      if (sameDay(item.timestamp, now)) {
+        today.add(item);
+      } else if (sameDay(item.timestamp, yesterdayDate)) {
+        yesterday.add(item);
+      } else {
+        earlier.add(item);
+      }
+    }
+
+    return [
+      if (today.isNotEmpty) _HistoryGroup('Today', today),
+      if (yesterday.isNotEmpty) _HistoryGroup('Yesterday', yesterday),
+      if (earlier.isNotEmpty) _HistoryGroup('Earlier', earlier),
+    ];
+  }
+}
+
+class _HistoryGroup {
+  final String label;
+  final List<TransferItem> items;
+
+  const _HistoryGroup(this.label, this.items);
 }
