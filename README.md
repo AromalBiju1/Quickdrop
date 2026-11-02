@@ -1,5 +1,9 @@
 # QuickDrop ⚡📸
 
+<p align="center">
+  <img src="assets/images/quickdrop_logo.png" alt="QuickDrop logo" width="240">
+</p>
+
 > **Zero-Friction Phone-to-Laptop Screenshot & Photo Transfer**  
 > Direct peer-to-peer Wi-Fi streaming with zero cloud, zero social media, and zero USB/Bluetooth pairing hassle.
 
