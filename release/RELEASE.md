@@ -353,8 +353,8 @@ uninstall the old build first — doing so clears local settings and history.
 - [x] Windows runner and desktop integrations added
 - [x] GitHub Actions workflow builds Linux and Windows artifacts
 - [ ] APK signed with a production keystore
-- [ ] GitHub release created and APK attached
-- [ ] Windows ZIP built and attached by the release workflow
+- [x] GitHub release created and APK attached
+- [x] Windows ZIP built and attached by the release workflow
 - [ ] Store listing and screenshots prepared
 
 ---
