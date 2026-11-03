@@ -311,27 +311,26 @@ system. QuickDrop detects the resulting interfaces but does not toggle tethering
 | Toolchain | Flutter 3.47.7 / Dart 3.13.5 |
 | Build mode | `flutter build apk --release` and `flutter build linux --release` |
 | Windows build | `flutter build windows --release` on GitHub Actions `windows-latest` |
-| APK size | 53.7 MB (53,710,420 bytes) |
-| APK SHA-256 | `b2472383adeb61b5b930edcf6b5b117df3f93b02d4454683e25d53c39ede02d0` |
-| Linux bundle size | 11.0 MB (11,035,586 bytes) |
-| Linux bundle SHA-256 | `385c5ea12824a4cb8c0e52ec2b5d4b3c2b84974a659237e994df933e61af91c1` |
-| Windows bundle SHA-256 | See the attached `*.zip.sha256` asset |
+| APK size | 53.7 MB (53,726,752 bytes) |
+| APK SHA-256 | `7645639ec1751a1bf09c3fc5d8b23ba6146e7633884e72598f9b539a28d352d3` |
+| Linux bundle SHA-256 | Attached as `QuickDrop-1.1.0-linux-x64.tar.gz.sha256` |
+| Windows bundle SHA-256 | Attached as `QuickDrop-1.1.0-windows-x64.zip.sha256` |
 
 Verify the downloaded files:
 
 ```bash
 sha256sum release/QuickDrop-1.1.0.apk
-sha256sum release/QuickDrop-1.1.0-linux-x64.tar.gz
+sha256sum -c QuickDrop-1.1.0-linux-x64.tar.gz.sha256
 ```
 
-On Windows:
+On Windows, compare the output of this command with the adjacent `.sha256` file:
 
 ```powershell
 Get-FileHash QuickDrop-1.1.0-windows-x64.zip -Algorithm SHA256
 ```
 
-The APK and Linux hashes are also listed in `release/SHA256SUMS`. The Windows workflow
-attaches a `.zip.sha256` file next to the ZIP.
+The desktop archives are built in CI, so each release attaches its own `.sha256` file
+next to the archive. The APK hash is also listed in `release/SHA256SUMS`.
 
 ---
 
