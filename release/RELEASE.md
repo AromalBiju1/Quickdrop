@@ -4,6 +4,7 @@
 **Version:** 1.1.0 (build 3)
 **Platforms:** Android 7.0+ (API 24) · Linux desktop (x64)
 **APK artifact:** `release/QuickDrop-1.1.0.apk`
+**Linux artifact:** `release/QuickDrop-1.1.0-linux-x64.tar.gz`
 
 ---
 
@@ -168,7 +169,22 @@ device card to the transfer screen and the diagnostics panel.
 
 ### Linux desktop
 
-Run the release bundle from a Flutter build, then optionally install the launcher:
+Download `release/QuickDrop-1.1.0-linux-x64.tar.gz`, then either run it directly:
+
+```bash
+tar -xzf QuickDrop-1.1.0-linux-x64.tar.gz
+cd QuickDrop-1.1.0-linux-x64
+./quickdrop
+```
+
+Or install it into your application menu:
+
+```bash
+./install.sh
+```
+
+The installer copies the app to `~/.local/opt/quickdrop` and adds a launcher and
+icon for the current user. To build from source instead:
 
 ```bash
 flutter build linux --release
@@ -249,12 +265,17 @@ system. QuickDrop detects the resulting interfaces but does not toggle tethering
 | Build mode | `flutter build apk --release` |
 | APK size | 53.7 MB (53,726,752 bytes) |
 | APK SHA-256 | `7645639ec1751a1bf09c3fc5d8b23ba6146e7633884e72598f9b539a28d352d3` |
+| Linux bundle size | 11.0 MB (11,035,239 bytes) |
+| Linux bundle SHA-256 | `8fbd039d12153722b7863ab76a07d5f198b4efca519d4aa43b56589994d52864` |
 
-Verify the downloaded APK:
+Verify the downloaded files:
 
 ```bash
 sha256sum release/QuickDrop-1.1.0.apk
+sha256sum release/QuickDrop-1.1.0-linux-x64.tar.gz
 ```
+
+The same hashes are listed in `release/SHA256SUMS`.
 
 ---
 
@@ -273,6 +294,7 @@ uninstall the old build first — doing so clears local settings and history.
 - [x] `flutter analyze` clean
 - [x] All automated tests passing
 - [x] Release APK built and copied to `release/`
+- [x] Linux x64 bundle packaged in `release/`
 - [ ] APK signed with a production keystore
 - [ ] GitHub release created and APK attached
 - [ ] Store listing and screenshots prepared

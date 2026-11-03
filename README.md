@@ -78,5 +78,6 @@ adb install -r build/app/outputs/flutter-apk/app-release.apk
 ```
 
 A ready-to-sideload build is placed in `release/QuickDrop-1.1.0.apk`.
+A Linux x64 bundle is in `release/QuickDrop-1.1.0-linux-x64.tar.gz`.
 See [release/RELEASE.md](release/RELEASE.md) for the full release notes,
 installation steps and known limitations.
