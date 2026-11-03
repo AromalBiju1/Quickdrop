@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/file_utils.dart';
-import '../../core/linux_integrations.dart';
 import '../../core/platform_integrations.dart';
 import '../../models/device_peer.dart';
 import '../quickdrop_theme.dart';
@@ -20,7 +19,8 @@ class TransferHistoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     // Android files live in public Downloads through MediaStore. A scoped
     // path may not be stat-able, but the content URI is still valid.
-    final exists = (item.contentUri?.isNotEmpty ?? false) ||
+    final exists =
+        (item.contentUri?.isNotEmpty ?? false) ||
         (item.filePath.isNotEmpty && File(item.filePath).existsSync());
 
     return Material(
@@ -140,7 +140,9 @@ class TransferHistoryTile extends StatelessWidget {
                             : 'Show in folder',
                       ),
                     ),
-                  if (exists && Platform.isLinux && item.isImage)
+                  if (exists &&
+                      (Platform.isLinux || Platform.isWindows) &&
+                      item.isImage)
                     const PopupMenuItem(
                       value: 'copy_image',
                       child: _MenuRow(
@@ -182,11 +184,22 @@ class TransferHistoryTile extends StatelessWidget {
         }
         final index = item.filePath.lastIndexOf(Platform.pathSeparator);
         if (index > 0) {
-          await LinuxIntegrations.openFolder(item.filePath.substring(0, index));
+          final opened = await PlatformIntegrations.openFolder(
+            item.filePath.substring(0, index),
+          );
+          if (!opened && context.mounted) {
+            _notify(
+              context,
+              'Could not open the file folder',
+              tone: TopNoticeTone.error,
+            );
+          }
         }
         return;
       case 'copy_image':
-        final ok = await LinuxIntegrations.copyImageToClipboard(item.filePath);
+        final ok = await PlatformIntegrations.copyImageToClipboard(
+          item.filePath,
+        );
         if (context.mounted) {
           _notify(
             context,
@@ -216,7 +229,10 @@ class TransferHistoryTile extends StatelessWidget {
       }
       return;
     }
-    await LinuxIntegrations.openFile(item.filePath);
+    final opened = await PlatformIntegrations.openFile(item.filePath);
+    if (!opened && context.mounted) {
+      _notify(context, 'No app can open this file', tone: TopNoticeTone.error);
+    }
   }
 
   void _notify(
@@ -225,10 +241,7 @@ class TransferHistoryTile extends StatelessWidget {
     TopNoticeTone tone = TopNoticeTone.success,
   }) {
     if (!context.mounted) return;
-    showTopNotice(
-      context,
-      TopNotice(message: message, tone: tone),
-    );
+    showTopNotice(context, TopNotice(message: message, tone: tone));
   }
 }
 

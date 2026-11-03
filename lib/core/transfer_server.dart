@@ -9,7 +9,6 @@ import 'package:path_provider/path_provider.dart';
 import '../models/device_peer.dart';
 import 'app_store.dart';
 import 'file_utils.dart';
-import 'linux_integrations.dart';
 import 'platform_integrations.dart';
 
 class TransferServer {
@@ -49,9 +48,12 @@ class TransferServer {
         port,
         shared: true,
       );
-      _server?.listen(_handleRequest, onError: (e) {
-        debugPrint('[Server] Request error: $e');
-      });
+      _server?.listen(
+        _handleRequest,
+        onError: (e) {
+          debugPrint('[Server] Request error: $e');
+        },
+      );
       isRunningNotifier.value = true;
       debugPrint('[Server] Listening on port ${_server?.port ?? port}');
     } catch (e) {
@@ -71,14 +73,16 @@ class TransferServer {
 
     final isImage = fileName == null || FileUtils.isImage(fileName);
     if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
-      final home = Platform.environment['HOME'] ??
-          Platform.environment['USERPROFILE'] ??
-          Directory.current.path;
-      final path = Platform.isLinux
-          ? (isImage
-              ? '$home/Pictures/Screenshots'
-              : '$home/Downloads/QuickDrop')
-          : '$home/Downloads/QuickDrop';
+      final home = Platform.isWindows
+          ? (Platform.environment['USERPROFILE'] ??
+                Platform.environment['HOME'] ??
+                Directory.current.path)
+          : (Platform.environment['HOME'] ??
+                Platform.environment['USERPROFILE'] ??
+                Directory.current.path);
+      final path = Platform.isLinux && isImage
+          ? p.join(home, 'Pictures', 'Screenshots')
+          : p.join(home, 'Downloads', 'QuickDrop');
       final dir = Directory(path);
       if (!await dir.exists()) {
         await dir.create(recursive: true);
@@ -157,16 +161,18 @@ class TransferServer {
     request.response
       ..headers.contentType = ContentType.json
       ..statusCode = HttpStatus.ok
-      ..write(jsonEncode({
-        'status': 'online',
-        'id': deviceId,
-        'device': deviceName,
-        'device_type': _deviceType,
-        'platform': Platform.operatingSystem,
-        'http_port': boundPort,
-        'version': '2.0',
-        'offline_capable': true,
-      }));
+      ..write(
+        jsonEncode({
+          'status': 'online',
+          'id': deviceId,
+          'device': deviceName,
+          'device_type': _deviceType,
+          'platform': Platform.operatingSystem,
+          'http_port': boundPort,
+          'version': '2.0',
+          'offline_capable': true,
+        }),
+      );
     await request.response.close();
   }
 
@@ -174,18 +180,22 @@ class TransferServer {
     File? tempFile;
     try {
       final rawFileName = request.headers.value('X-File-Name');
-      final fallbackName =
-          'file_${DateTime.now().millisecondsSinceEpoch}';
+      final fallbackName = 'file_${DateTime.now().millisecondsSinceEpoch}';
       final fileName = FileUtils.sanitizeFileName(
         rawFileName != null && rawFileName.isNotEmpty
             ? Uri.decodeComponent(rawFileName)
             : fallbackName,
       );
-      final senderName =
-          Uri.decodeComponent(request.headers.value('X-Sender-Name') ?? 'Unknown');
+      final senderName = Uri.decodeComponent(
+        request.headers.value('X-Sender-Name') ?? 'Unknown',
+      );
       final batchId = request.headers.value('X-Batch-Id');
-      final fileIndex = int.tryParse(request.headers.value('X-File-Index') ?? '');
-      final fileTotal = int.tryParse(request.headers.value('X-File-Total') ?? '');
+      final fileIndex = int.tryParse(
+        request.headers.value('X-File-Index') ?? '',
+      );
+      final fileTotal = int.tryParse(
+        request.headers.value('X-File-Total') ?? '',
+      );
 
       final saveDir = await getSaveDirectory(fileName: fileName);
       final targetFile = await FileUtils.uniqueFile(saveDir, fileName);
@@ -240,20 +250,22 @@ class TransferServer {
         }
       }
 
+      final isDesktop = Platform.isLinux || Platform.isWindows;
       var copiedToClipboard = false;
-      if (Platform.isLinux && autoCopyImages && FileUtils.isImage(targetFile.path)) {
-        copiedToClipboard =
-            await LinuxIntegrations.copyImageToClipboard(targetFile.path);
+      if (isDesktop && autoCopyImages && FileUtils.isImage(targetFile.path)) {
+        copiedToClipboard = await PlatformIntegrations.copyImageToClipboard(
+          targetFile.path,
+        );
       }
 
       final suffix = fileTotal != null && fileTotal > 1 && fileIndex != null
           ? ' ($fileIndex/$fileTotal)'
           : '';
-      if (Platform.isLinux && notifications) {
-        await LinuxIntegrations.showDesktopNotification(
+      if (isDesktop && notifications) {
+        await PlatformIntegrations.showDesktopNotification(
           'QuickDrop • File received',
           '${FileUtils.fileName(targetFile.path)}$suffix from $senderName'
-          '${copiedToClipboard ? ' • copied to clipboard' : ''}',
+              '${copiedToClipboard ? ' • copied to clipboard' : ''}',
           imagePath: targetFile.path,
         );
       }
@@ -275,14 +287,16 @@ class TransferServer {
       request.response
         ..headers.contentType = ContentType.json
         ..statusCode = HttpStatus.ok
-        ..write(jsonEncode({
-          'status': 'success',
-          'file': item.fileName,
-          'path': item.filePath,
-          'uri': item.contentUri,
-          'size': item.fileSize,
-          'clipboard': copiedToClipboard,
-        }));
+        ..write(
+          jsonEncode({
+            'status': 'success',
+            'file': item.fileName,
+            'path': item.filePath,
+            'uri': item.contentUri,
+            'size': item.fileSize,
+            'clipboard': copiedToClipboard,
+          }),
+        );
       await request.response.close();
     } catch (e, st) {
       debugPrint('[Server] Error handling transfer: $e\n$st');
@@ -337,9 +351,11 @@ class TransferServer {
 
   void _persistHistory() {
     if (!enablePersistence) return;
-    unawaited(AppStore.writeJson('history', {
-      'items': historyNotifier.value.map((item) => item.toJson()).toList(),
-    }));
+    unawaited(
+      AppStore.writeJson('history', {
+        'items': historyNotifier.value.map((item) => item.toJson()).toList(),
+      }),
+    );
   }
 
   Future<void> _handleWebInterface(HttpRequest request) async {
@@ -362,8 +378,8 @@ class TransferServer {
 
   String get _deviceType =>
       Platform.isLinux || Platform.isMacOS || Platform.isWindows
-          ? 'desktop'
-          : 'mobile';
+      ? 'desktop'
+      : 'mobile';
 
   void stop() {
     _server?.close(force: true);

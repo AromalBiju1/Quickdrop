@@ -2,9 +2,10 @@
 
 **Release date:** 3 November 2026
 **Version:** 1.1.0 (build 3)
-**Platforms:** Android 7.0+ (API 24) · Linux desktop (x64)
+**Platforms:** Android 7.0+ (API 24) · Linux desktop (x64) · Windows 10/11 (x64)
 **APK artifact:** `release/QuickDrop-1.1.0.apk`
 **Linux artifact:** `release/QuickDrop-1.1.0-linux-x64.tar.gz`
+**Windows artifact:** `QuickDrop-1.1.0-windows-x64.zip` (built by GitHub Actions)
 
 ---
 
@@ -56,6 +57,18 @@ device card to the transfer screen and the diagnostics panel.
   open the **Sent** view.
 - Every in-app status message now uses the same top banner instead of bottom snackbars.
 - Linux desktop notifications are unchanged and still appear alongside the in-app banner.
+
+### Windows desktop support
+
+- QuickDrop now has a native Windows runner and ships as a portable x64 ZIP.
+- Received images can be copied to the Windows clipboard and incoming files raise a
+  native desktop notification.
+- Open file, show-in-folder and browser links use the Windows shell, so file
+  associations work the same as a double-click.
+- Windows adapter names such as **Wi-Fi**, **Ethernet** and **Remote NDIS** are
+  classified correctly, while Hyper-V, WSL and VMware adapters are ignored.
+- A GitHub Actions workflow now builds the Linux tarball and the Windows ZIP for
+  release tags and manual runs.
 
 ### Reliability
 
@@ -118,13 +131,19 @@ device card to the transfer screen and the diagnostics panel.
   FileProvider URI for app-private files.
 - Shortcuts for Wi-Fi, hotspot/tethering and Downloads settings.
 
-### Linux integration
+### Desktop integration
 
-- Images save to `~/Pictures/Screenshots`; other files save to `~/Downloads/QuickDrop`.
-- Clipboard copy supports **wl-copy** (Wayland), **xclip** and **xsel** (X11).
-- Desktop notifications through `notify-send`.
-- Open files and folders with `xdg-open`.
-- `install_desktop_launcher.sh` installs an application-menu entry and icon.
+- On Linux, images save to `~/Pictures/Screenshots` and other files to
+  `~/Downloads/QuickDrop`. On Windows, everything saves to
+  `%USERPROFILE%\Downloads\QuickDrop`.
+- Linux clipboard copy supports **wl-copy** (Wayland), **xclip** and **xsel** (X11).
+  Windows clipboard copy uses the native .NET clipboard API.
+- Desktop notifications use `notify-send` on Linux and a native tray notification on
+  Windows.
+- Files, folders and URLs open through `xdg-open` on Linux and the Windows shell on
+  Windows.
+- `install_desktop_launcher.sh` installs an application-menu entry and icon on Linux;
+  the Windows ZIP is portable and runs directly from its extracted folder.
 
 ### Offline link layer
 
@@ -199,6 +218,30 @@ sudo ufw allow 53318/tcp
 sudo ufw allow 53317/udp
 ```
 
+### Windows desktop
+
+Download `QuickDrop-1.1.0-windows-x64.zip`, then extract the whole folder and run:
+
+```powershell
+Expand-Archive QuickDrop-1.1.0-windows-x64.zip -DestinationPath .
+.\QuickDrop-1.1.0-windows-x64\quickdrop.exe
+```
+
+Keep `quickdrop.exe`, the DLLs and the `data` folder together. The build is portable
+and has no installer. Windows may show a SmartScreen warning because the executable is
+not code-signed; choose **More info → Run anyway** after verifying the SHA-256 hash.
+
+When Windows Defender Firewall prompts, allow QuickDrop on **Private networks**. If the
+prompt was dismissed, allow the app for TCP `53318` and UDP `53317` in Windows Defender
+Firewall.
+
+To build from source on Windows:
+
+```powershell
+flutter build windows --release
+.\tool\package_windows.ps1
+```
+
 ### Browser receiver
 
 With QuickDrop open on the receiving device, open the URL shown on the Receive tab:
@@ -216,7 +259,9 @@ or scan the QR code. The sender does not need QuickDrop installed.
 | Item | Requirement |
 | --- | --- |
 | Android | 7.0 (API 24) or newer |
-| Linux desktop | x64 build of the Flutter Linux bundle |
+| Linux desktop | x64 with GTK 3 |
+| Windows desktop | Windows 10 or 11, x64 |
+| Windows runtime | Microsoft Visual C++ 2015-2022 Redistributable (x64) |
 | Network | Both devices on the same LAN, hotspot or tether |
 | Ports | UDP 53317 for discovery, TCP 53318 for transfers |
 | Internet | Not required |
@@ -249,7 +294,9 @@ system. QuickDrop detects the resulting interfaces but does not toggle tethering
 - The Android receiver runs while the app is open; there is no background service.
 - Linux Bluetooth PAN setup is operating-system work. The app can use `bnep0` once the
   PAN connection exists, but cannot create it.
-- iOS, Windows and macOS builds are not part of this release.
+- iOS and macOS builds are not part of this release.
+- The Windows ZIP is unsigned, so SmartScreen may warn on first launch.
+- Windows Bluetooth PAN setup is operating-system work, as it is on Linux.
 - Browser uploads are intentionally limited to the local receiver page; there is no
   remote relay.
 
@@ -262,11 +309,13 @@ system. QuickDrop detects the resulting interfaces but does not toggle tethering
 | `flutter analyze` | Clean (0 issues) |
 | `flutter test` | 45 tests passing |
 | Toolchain | Flutter 3.47.7 / Dart 3.13.5 |
-| Build mode | `flutter build apk --release` |
-| APK size | 53.7 MB (53,726,752 bytes) |
-| APK SHA-256 | `7645639ec1751a1bf09c3fc5d8b23ba6146e7633884e72598f9b539a28d352d3` |
-| Linux bundle size | 11.0 MB (11,035,239 bytes) |
-| Linux bundle SHA-256 | `8fbd039d12153722b7863ab76a07d5f198b4efca519d4aa43b56589994d52864` |
+| Build mode | `flutter build apk --release` and `flutter build linux --release` |
+| Windows build | `flutter build windows --release` on GitHub Actions `windows-latest` |
+| APK size | 53.7 MB (53,710,420 bytes) |
+| APK SHA-256 | `b2472383adeb61b5b930edcf6b5b117df3f93b02d4454683e25d53c39ede02d0` |
+| Linux bundle size | 11.0 MB (11,035,586 bytes) |
+| Linux bundle SHA-256 | `385c5ea12824a4cb8c0e52ec2b5d4b3c2b84974a659237e994df933e61af91c1` |
+| Windows bundle SHA-256 | See the attached `*.zip.sha256` asset |
 
 Verify the downloaded files:
 
@@ -275,7 +324,14 @@ sha256sum release/QuickDrop-1.1.0.apk
 sha256sum release/QuickDrop-1.1.0-linux-x64.tar.gz
 ```
 
-The same hashes are listed in `release/SHA256SUMS`.
+On Windows:
+
+```powershell
+Get-FileHash QuickDrop-1.1.0-windows-x64.zip -Algorithm SHA256
+```
+
+The APK and Linux hashes are also listed in `release/SHA256SUMS`. The Windows workflow
+attaches a `.zip.sha256` file next to the ZIP.
 
 ---
 
@@ -295,8 +351,11 @@ uninstall the old build first — doing so clears local settings and history.
 - [x] All automated tests passing
 - [x] Release APK built and copied to `release/`
 - [x] Linux x64 bundle packaged in `release/`
+- [x] Windows runner and desktop integrations added
+- [x] GitHub Actions workflow builds Linux and Windows artifacts
 - [ ] APK signed with a production keystore
 - [ ] GitHub release created and APK attached
+- [ ] Windows ZIP built and attached by the release workflow
 - [ ] Store listing and screenshots prepared
 
 ---

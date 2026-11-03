@@ -29,6 +29,21 @@ void main() {
         SystemNetworkLinkProvider.classify('enp0s20u1'),
         LinkKind.ethernet,
       );
+      expect(
+        SystemNetworkLinkProvider.classify(
+          'Remote NDIS based Internet Sharing Device',
+        ),
+        LinkKind.usb,
+      );
+      expect(
+        SystemNetworkLinkProvider.classify('Bluetooth Network Connection'),
+        LinkKind.bluetooth,
+      );
+      expect(SystemNetworkLinkProvider.classify('Wi-Fi'), LinkKind.wifi);
+      expect(
+        SystemNetworkLinkProvider.classify('Ethernet 2'),
+        LinkKind.ethernet,
+      );
       expect(SystemNetworkLinkProvider.classify('mystery0'), LinkKind.unknown);
     });
 
@@ -41,11 +56,15 @@ void main() {
         'tun0',
         'rmnet0',
         'clat0',
+        'vEthernet (WSL)',
+        'VMware Network Adapter VMnet1',
       ]) {
         expect(SystemNetworkLinkProvider.isVirtual(name), isTrue, reason: name);
       }
       expect(SystemNetworkLinkProvider.isVirtual('usb0'), isFalse);
       expect(SystemNetworkLinkProvider.isVirtual('bnep0'), isFalse);
+      expect(SystemNetworkLinkProvider.isVirtual('Ethernet 2'), isFalse);
+      expect(SystemNetworkLinkProvider.isVirtual('Wi-Fi'), isFalse);
     });
   });
 

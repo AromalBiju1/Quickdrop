@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import '../core/app_store.dart';
 import '../core/discovery_service.dart';
 import '../core/file_utils.dart';
-import '../core/linux_integrations.dart';
 import '../core/platform_integrations.dart';
 import '../core/quickdrop_controller.dart';
 import '../core/transfer_server.dart';
@@ -90,10 +89,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     if (!mounted) return;
     setState(() => _lastSummary = summary);
     _showNotice(
-      buildSendNotice(
-        summary,
-        onView: () => _viewAllTransfers(filter: 1),
-      ),
+      buildSendNotice(summary, onView: () => _viewAllTransfers(filter: 1)),
     );
   }
 
@@ -121,10 +117,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     final items = _pendingIncoming.values.toList();
     _pendingIncoming.clear();
     _showNotice(
-      buildReceiveNotice(
-        items,
-        onView: () => _viewAllTransfers(filter: 2),
-      ),
+      buildReceiveNotice(items, onView: () => _viewAllTransfers(filter: 2)),
     );
   }
 
@@ -269,8 +262,15 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     }
     final dir = await _controller.server.getLastSaveDirectory();
     if (!mounted) return;
-    if (Platform.isLinux) {
-      await LinuxIntegrations.openFolder(dir.path);
+    if (Platform.isLinux || Platform.isWindows) {
+      final opened = await PlatformIntegrations.openFolder(dir.path);
+      if (!opened && mounted) {
+        _notify(
+          'Received files: ${dir.path}',
+          icon: Icons.folder_rounded,
+          tone: TopNoticeTone.info,
+        );
+      }
     } else {
       _notify(
         'Received files: ${dir.path}',
@@ -401,12 +401,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     String? detail,
   }) {
     _showNotice(
-      TopNotice(
-        message: message,
-        detail: detail,
-        icon: icon,
-        tone: tone,
-      ),
+      TopNotice(message: message, detail: detail, icon: icon, tone: tone),
     );
   }
 
@@ -1432,10 +1427,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
               decoration: BoxDecoration(
                 color: QuickDropColors.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: QuickDropColors.emerald,
-                  width: 1.5,
-                ),
+                border: Border.all(color: QuickDropColors.emerald, width: 1.5),
                 boxShadow: QuickDropColors.raisedShadow,
               ),
               child: const Column(

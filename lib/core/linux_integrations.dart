@@ -85,27 +85,27 @@ class LinuxIntegrations {
     } catch (_) {}
   }
 
-  static Future<void> openFile(String filePath) async {
-    if (Platform.isLinux) {
-      try {
-        await Process.run('xdg-open', [filePath]);
-      } catch (_) {}
-    }
+  static Future<bool> openFile(String filePath) async {
+    if (!Platform.isLinux) return false;
+    return _open(filePath);
   }
 
-  static Future<void> openFolder(String folderPath) async {
-    if (Platform.isLinux) {
-      try {
-        await Process.run('xdg-open', [folderPath]);
-      } catch (_) {}
-    }
+  static Future<bool> openFolder(String folderPath) async {
+    if (!Platform.isLinux) return false;
+    return _open(folderPath);
   }
 
-  static Future<void> openUrl(String url) async {
-    if (Platform.isLinux) {
-      try {
-        await Process.run('xdg-open', [url]);
-      } catch (_) {}
+  static Future<bool> openUrl(String url) async {
+    if (!Platform.isLinux) return false;
+    return _open(url);
+  }
+
+  static Future<bool> _open(String target) async {
+    try {
+      final result = await Process.run('xdg-open', [target]);
+      return result.exitCode == 0;
+    } catch (_) {
+      return false;
     }
   }
 }

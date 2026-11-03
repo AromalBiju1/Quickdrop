@@ -84,11 +84,17 @@ class AppSettings {
     try {
       final host = Platform.localHostname;
       if (host.isNotEmpty && host != 'localhost') {
-        name = Platform.isLinux ? '$host (Linux)' : host;
+        name = Platform.isLinux
+            ? '$host (Linux)'
+            : Platform.isWindows
+            ? '$host (Windows)'
+            : host;
       } else if (Platform.isAndroid) {
         name = 'Android Phone';
       } else if (Platform.isLinux) {
         name = 'Linux Laptop';
+      } else if (Platform.isWindows) {
+        name = 'Windows PC';
       }
     } catch (_) {}
     return AppSettings(deviceName: name);
@@ -118,8 +124,8 @@ class AppSettings {
   }
 
   Map<String, dynamic> toJson() => {
-        'device_name': deviceName,
-        'auto_copy_images': autoCopyImages,
-        'notifications': notifications,
-      };
+    'device_name': deviceName,
+    'auto_copy_images': autoCopyImages,
+    'notifications': notifications,
+  };
 }

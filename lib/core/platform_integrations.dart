@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 
 import 'linux_integrations.dart';
+import 'windows_integrations.dart';
 
 class SavedDownload {
   final String uri;
@@ -37,14 +38,17 @@ class PlatformIntegrations {
   static Future<bool> openUrl(String url) async {
     if (Platform.isAndroid) {
       try {
-        return await _channel.invokeMethod<bool>('openUrl', {'url': url}) ?? false;
+        return await _channel.invokeMethod<bool>('openUrl', {'url': url}) ??
+            false;
       } catch (_) {
         return false;
       }
     }
     if (Platform.isLinux) {
-      await LinuxIntegrations.openUrl(url);
-      return true;
+      return LinuxIntegrations.openUrl(url);
+    }
+    if (Platform.isWindows) {
+      return WindowsIntegrations.openUrl(url);
     }
     return false;
   }
@@ -62,11 +66,7 @@ class PlatformIntegrations {
     try {
       final result = await _channel.invokeMapMethod<String, dynamic>(
         'saveToDownloads',
-        {
-          'path': path,
-          'fileName': fileName,
-          'mimeType': mimeType,
-        },
+        {'path': path, 'fileName': fileName, 'mimeType': mimeType},
       );
       final uri = result?['uri'] as String?;
       final savedPath = result?['path'] as String?;
@@ -89,15 +89,55 @@ class PlatformIntegrations {
 
   /// Opens a content URI (preferred) or a file path with the system viewer.
   static Future<bool> openFile(String target, {String? mimeType}) async {
-    if (!Platform.isAndroid) return false;
-    try {
-      return await _channel.invokeMethod<bool>('openFile', {
-        'uri': target,
-        'mimeType': mimeType ?? '*/*',
-      }) ??
-          false;
-    } catch (_) {
-      return false;
+    if (Platform.isAndroid) {
+      try {
+        return await _channel.invokeMethod<bool>('openFile', {
+              'uri': target,
+              'mimeType': mimeType ?? '*/*',
+            }) ??
+            false;
+      } catch (_) {
+        return false;
+      }
+    }
+    if (Platform.isLinux) return LinuxIntegrations.openFile(target);
+    if (Platform.isWindows) return WindowsIntegrations.openFile(target);
+    return false;
+  }
+
+  static Future<bool> openFolder(String target) async {
+    if (Platform.isLinux) return LinuxIntegrations.openFolder(target);
+    if (Platform.isWindows) return WindowsIntegrations.openFolder(target);
+    return false;
+  }
+
+  static Future<bool> copyImageToClipboard(String filePath) async {
+    if (Platform.isLinux) {
+      return LinuxIntegrations.copyImageToClipboard(filePath);
+    }
+    if (Platform.isWindows) {
+      return WindowsIntegrations.copyImageToClipboard(filePath);
+    }
+    return false;
+  }
+
+  static Future<void> showDesktopNotification(
+    String title,
+    String message, {
+    String? imagePath,
+  }) async {
+    if (Platform.isLinux) {
+      await LinuxIntegrations.showDesktopNotification(
+        title,
+        message,
+        imagePath: imagePath,
+      );
+    } else if (Platform.isWindows) {
+      await WindowsIntegrations.showDesktopNotification(
+        title,
+        message,
+        imagePath: imagePath,
+      );
     }
   }
 }

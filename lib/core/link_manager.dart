@@ -33,6 +33,13 @@ class SystemNetworkLinkProvider implements LinkProvider {
     'wg',
     'utun',
     'ham',
+    // Windows virtual adapters from Hyper-V, WSL and container runtimes.
+    'vethernet',
+    'wsl',
+    'vmware',
+    'virtualbox',
+    'hyper-v',
+    'npcap',
     // Cellular links are not reachable from another local device and can
     // report carrier-internal addresses such as 192.0.0.2.
     'rmnet',
@@ -76,21 +83,30 @@ class SystemNetworkLinkProvider implements LinkProvider {
   /// Name-based classification. Misnamed interfaces still work as `unknown`.
   static LinkKind classify(String interfaceName) {
     final name = interfaceName.toLowerCase();
-    if (name.startsWith('usb') || name.startsWith('rndis')) {
+    if (name.startsWith('usb') ||
+        name.startsWith('rndis') ||
+        name.contains('remote ndis')) {
       return LinkKind.usb;
     }
     if (name.startsWith('bnep') ||
         name.startsWith('bt-pan') ||
-        name.startsWith('btpan')) {
+        name.startsWith('btpan') ||
+        name.contains('bluetooth')) {
       return LinkKind.bluetooth;
     }
     if (name.startsWith('wlan') ||
         name.startsWith('wl') ||
         name.startsWith('ap') ||
-        name.startsWith('swlan')) {
+        name.startsWith('swlan') ||
+        name.contains('wi-fi') ||
+        name.contains('wifi') ||
+        name.contains('wireless')) {
       return LinkKind.wifi;
     }
-    if (name.startsWith('en') || name.startsWith('eth')) {
+    if (name.startsWith('en') ||
+        name.startsWith('eth') ||
+        name.contains('ethernet') ||
+        name.startsWith('local area connection')) {
       return LinkKind.ethernet;
     }
     return LinkKind.unknown;
@@ -141,10 +157,10 @@ class LinkManager {
   Set<String> get subnetPrefixes => links.map((link) => link.prefix).toSet();
 
   Set<String> get broadcastTargets => {
-        for (final link in links) link.broadcast,
-        '255.255.255.255',
-        '224.0.0.167',
-      };
+    for (final link in links) link.broadcast,
+    '255.255.255.255',
+    '224.0.0.167',
+  };
 
   Future<void> refresh() async {
     try {

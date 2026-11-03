@@ -58,6 +58,7 @@ app.*.map.json
 /release/*.aab
 /release/*.tar.gz
 /release/*.zip
+/release/*.sha256
 
 # Kotlin build metadata
 .kotlin/
