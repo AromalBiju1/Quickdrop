@@ -9,6 +9,7 @@ import '../../core/platform_integrations.dart';
 import '../../models/device_peer.dart';
 import '../quickdrop_theme.dart';
 import 'file_thumb.dart';
+import 'top_notice.dart';
 
 class TransferHistoryTile extends StatelessWidget {
   final TransferItem item;
@@ -161,7 +162,7 @@ class TransferHistoryTile extends StatelessWidget {
       case 'copy_path':
         await Clipboard.setData(ClipboardData(text: item.filePath));
         if (context.mounted) {
-          _toast(context, 'File path copied', QuickDropColors.emeraldDark);
+          _notify(context, 'File path copied');
         }
         return;
       case 'open':
@@ -171,10 +172,10 @@ class TransferHistoryTile extends StatelessWidget {
         if (Platform.isAndroid) {
           final ok = await PlatformIntegrations.openDownloads();
           if (!ok && context.mounted) {
-            _toast(
+            _notify(
               context,
               'Files are in Download/QuickDrop',
-              QuickDropColors.emeraldDark,
+              tone: TopNoticeTone.info,
             );
           }
           return;
@@ -187,10 +188,10 @@ class TransferHistoryTile extends StatelessWidget {
       case 'copy_image':
         final ok = await LinuxIntegrations.copyImageToClipboard(item.filePath);
         if (context.mounted) {
-          _toast(
+          _notify(
             context,
             ok ? 'Image copied to clipboard' : 'Could not copy image',
-            ok ? QuickDropColors.emeraldDark : QuickDropColors.rose,
+            tone: ok ? TopNoticeTone.success : TopNoticeTone.error,
           );
         }
         return;
@@ -207,34 +208,27 @@ class TransferHistoryTile extends StatelessWidget {
         mimeType: FileUtils.mimeType(item.fileName),
       );
       if (!ok && context.mounted) {
-        _toast(context, 'No app can open this file', QuickDropColors.rose);
+        _notify(
+          context,
+          'No app can open this file',
+          tone: TopNoticeTone.error,
+        );
       }
       return;
     }
     await LinuxIntegrations.openFile(item.filePath);
   }
 
-  void _toast(BuildContext context, String message, Color color) {
+  void _notify(
+    BuildContext context,
+    String message, {
+    TopNoticeTone tone = TopNoticeTone.success,
+  }) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              color == QuickDropColors.rose
-                  ? Icons.error_outline_rounded
-                  : Icons.check_circle_outline_rounded,
-              size: 17,
-              color: color == QuickDropColors.rose
-                  ? QuickDropColors.roseBorder
-                  : QuickDropColors.emeraldBorder,
-            ),
-            const SizedBox(width: 8),
-            Text(message),
-          ],
-        ),
-      ));
+    showTopNotice(
+      context,
+      TopNotice(message: message, tone: tone),
+    );
   }
 }
 

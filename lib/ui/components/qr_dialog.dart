@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../quickdrop_theme.dart';
+import 'top_notice.dart';
 
 class QrDialog extends StatelessWidget {
   final String webUrl;
@@ -134,11 +135,13 @@ class QrDialog extends StatelessWidget {
           onPressed: () async {
             await Clipboard.setData(ClipboardData(text: webUrl));
             if (context.mounted) {
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  const SnackBar(content: Text('Receiver URL copied')),
-                );
+              showTopNotice(
+                context,
+                const TopNotice(
+                  message: 'Receiver URL copied',
+                  icon: Icons.copy_rounded,
+                ),
+              );
             }
           },
           icon: const Icon(Icons.copy_rounded, size: 16),

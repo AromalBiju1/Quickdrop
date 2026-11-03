@@ -14,6 +14,7 @@
 ## ✨ Highlights
 
 - **Three-Tab Workflow:** Send, Receive and Transfers, with a nearby-device picker, drag-and-drop, live progress/ETA, and a persistent transfer history.
+- **Top In-App Notifications:** Completed sends and receives slide in above every screen, group multi-file arrivals into one banner, and jump straight to the matching transfer history.
 - **QR Browser Receiver:** Scan the QR code on the Receive tab and send from any browser — no app needed on the other device.
 - **Instant Android Share Sheet Integration:** Snap a screenshot on your phone, tap **Share** on the preview banner, choose **QuickDrop**, and beam it directly to your laptop in under 150ms.
 - **Zero-Touch Auto-Clipboard on Linux:** Received screenshots automatically save to `~/Pictures/Screenshots/` and are immediately copied to your system clipboard (`wl-copy` / `xclip`) with a native desktop notification. Just press `Ctrl+V` to paste anywhere.

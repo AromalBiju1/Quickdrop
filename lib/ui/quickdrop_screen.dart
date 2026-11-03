@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
@@ -23,8 +24,10 @@ import 'components/receive_card.dart';
 import 'components/send_panel.dart';
 import 'components/send_result_panel.dart';
 import 'components/settings_dialog.dart';
+import 'components/top_notice.dart';
 import 'components/transfer_history_tile.dart';
 import 'quickdrop_theme.dart';
+import 'transfer_notices.dart';
 
 class QuickDropScreen extends StatefulWidget {
   final DiscoveryService discoveryService;
@@ -49,6 +52,9 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
   int _tab = 0;
   int _historyFilter = 0;
   SendSummary? _lastSummary;
+  final Set<String> _seenIncomingIds = {};
+  final Map<String, TransferItem> _pendingIncoming = {};
+  Timer? _receiveNoticeTimer;
 
   @override
   void initState() {
@@ -59,11 +65,19 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
       settings: widget.settings,
     );
     _controller.summaryNotifier.addListener(_onSendSummary);
+    _seenIncomingIds.addAll(
+      widget.transferServer.historyNotifier.value
+          .where((item) => item.isIncoming && item.success)
+          .map((item) => item.id),
+    );
+    widget.transferServer.historyNotifier.addListener(_onHistoryChanged);
   }
 
   @override
   void dispose() {
     _controller.summaryNotifier.removeListener(_onSendSummary);
+    widget.transferServer.historyNotifier.removeListener(_onHistoryChanged);
+    _receiveNoticeTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -75,6 +89,48 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     _controller.summaryNotifier.value = null;
     if (!mounted) return;
     setState(() => _lastSummary = summary);
+    _showNotice(
+      buildSendNotice(
+        summary,
+        onView: () => _viewAllTransfers(filter: 1),
+      ),
+    );
+  }
+
+  void _onHistoryChanged() {
+    final items = widget.transferServer.historyNotifier.value;
+    final fresh = <TransferItem>[];
+    for (final item in items) {
+      if (!item.isIncoming || !item.success) continue;
+      if (_seenIncomingIds.add(item.id)) fresh.add(item);
+    }
+    if (fresh.isEmpty) return;
+
+    for (final item in fresh) {
+      _pendingIncoming[item.id] = item;
+    }
+    _receiveNoticeTimer?.cancel();
+    _receiveNoticeTimer = Timer(
+      const Duration(milliseconds: 700),
+      _flushReceiveNotice,
+    );
+  }
+
+  void _flushReceiveNotice() {
+    if (!mounted || _pendingIncoming.isEmpty) return;
+    final items = _pendingIncoming.values.toList();
+    _pendingIncoming.clear();
+    _showNotice(
+      buildReceiveNotice(
+        items,
+        onView: () => _viewAllTransfers(filter: 2),
+      ),
+    );
+  }
+
+  void _showNotice(TopNotice notice) {
+    if (!mounted) return;
+    showTopNotice(context, notice);
   }
 
   Future<void> _pickFiles({bool imagesOnly = false}) async {
@@ -82,16 +138,16 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     if (!mounted) return;
     if (result.added > 0) {
       setState(() => _lastSummary = null);
-      _toast(
+      _notify(
         '${result.added} file${result.added == 1 ? '' : 's'} ready to send',
         icon: Icons.attach_file_rounded,
-        color: QuickDropColors.emerald,
+        tone: TopNoticeTone.success,
       );
     } else if (result.skipped > 0) {
-      _toast(
+      _notify(
         'Some files could not be added',
         icon: Icons.warning_amber_rounded,
-        color: QuickDropColors.amberBorder,
+        tone: TopNoticeTone.warning,
       );
     }
   }
@@ -101,10 +157,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     if (!mounted) return;
     if (result.added > 0) {
       setState(() => _lastSummary = null);
-      _toast(
+      _notify(
         '${result.added} file${result.added == 1 ? '' : 's'} added',
         icon: Icons.add_rounded,
-        color: QuickDropColors.emerald,
+        tone: TopNoticeTone.success,
       );
     }
   }
@@ -134,12 +190,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
           ManualConnectDialog(discovery: _controller.discovery),
     );
     if (!mounted || result == null) return;
-    _toast(
+    _notify(
       result.message,
       icon: result.success ? Icons.link_rounded : Icons.error_outline_rounded,
-      color: result.success
-          ? QuickDropColors.emerald
-          : QuickDropColors.roseBorder,
+      tone: result.success ? TopNoticeTone.success : TopNoticeTone.error,
     );
   }
 
@@ -152,10 +206,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
       ),
     );
     if (saved == true && mounted) {
-      _toast(
+      _notify(
         'Settings saved',
         icon: Icons.check_rounded,
-        color: QuickDropColors.emerald,
+        tone: TopNoticeTone.success,
       );
     }
   }
@@ -178,10 +232,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
   Future<void> _openBrowser() async {
     final opened = await PlatformIntegrations.openUrl(_controller.webUrl);
     if (!opened && mounted) {
-      _toast(
+      _notify(
         'Open ${_controller.webUrl} on the other device',
         icon: Icons.language_rounded,
-        color: QuickDropColors.emerald,
+        tone: TopNoticeTone.info,
       );
     }
   }
@@ -205,10 +259,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
       final opened = await PlatformIntegrations.openDownloads();
       if (!mounted) return;
       if (!opened) {
-        _toast(
+        _notify(
           'Received files: Download/QuickDrop',
           icon: Icons.folder_rounded,
-          color: QuickDropColors.emerald,
+          tone: TopNoticeTone.info,
         );
       }
       return;
@@ -218,10 +272,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     if (Platform.isLinux) {
       await LinuxIntegrations.openFolder(dir.path);
     } else {
-      _toast(
+      _notify(
         'Received files: ${dir.path}',
         icon: Icons.folder_rounded,
-        color: QuickDropColors.emerald,
+        tone: TopNoticeTone.info,
       );
     }
   }
@@ -269,10 +323,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     if (clear == true) {
       _controller.clearHistory();
       if (mounted) {
-        _toast(
+        _notify(
           'History cleared',
           icon: Icons.delete_outline_rounded,
-          color: QuickDropColors.amberBorder,
+          tone: TopNoticeTone.info,
         );
       }
     }
@@ -340,36 +394,20 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
   }
 
-  void _toast(
+  void _notify(
     String message, {
     IconData icon = Icons.info_outline_rounded,
-    Color color = QuickDropColors.emerald,
+    TopNoticeTone tone = TopNoticeTone.success,
+    String? detail,
   }) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 3),
-          content: Row(
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  message,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+    _showNotice(
+      TopNotice(
+        message: message,
+        detail: detail,
+        icon: icon,
+        tone: tone,
+      ),
+    );
   }
 
   @override
@@ -762,10 +800,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
                 onTap: () async {
                   await _controller.refresh();
                   if (mounted) {
-                    _toast(
+                    _notify(
                       'Scanning the local network…',
                       icon: Icons.wifi_find_rounded,
-                      color: QuickDropColors.emerald,
+                      tone: TopNoticeTone.info,
                     );
                   }
                 },
@@ -976,10 +1014,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
                   ClipboardData(text: _controller.webUrl),
                 );
                 if (mounted) {
-                  _toast(
+                  _notify(
                     'Receiver URL copied',
                     icon: Icons.copy_rounded,
-                    color: QuickDropColors.emerald,
+                    tone: TopNoticeTone.success,
                   );
                 }
               },
@@ -1394,7 +1432,10 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
               decoration: BoxDecoration(
                 color: QuickDropColors.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: QuickDropColors.emerald, width: 1.5),
+                border: Border.all(
+                  color: QuickDropColors.emerald,
+                  width: 1.5,
+                ),
                 boxShadow: QuickDropColors.raisedShadow,
               ),
               child: const Column(

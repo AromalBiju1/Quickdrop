@@ -1,7 +1,7 @@
 # QuickDrop v1.1.0 — Release Notes
 
-**Release date:** 2 November 2026
-**Version:** 1.1.0 (build 2)
+**Release date:** 3 November 2026
+**Version:** 1.1.0 (build 3)
 **Platforms:** Android 7.0+ (API 24) · Linux desktop (x64)
 **APK artifact:** `release/QuickDrop-1.1.0.apk`
 
@@ -44,6 +44,17 @@ device card to the transfer screen and the diagnostics panel.
   tethering settings.
 - Settings now includes an **ACTIVE LINKS** section showing each interface's link kind,
   name, IP and priority.
+
+### In-app top notifications
+
+- Completed sends and receives now announce themselves in a banner at the top of the app,
+  so progress is visible from any tab.
+- Files that arrive together are grouped into one banner instead of flashing once per
+  file.
+- **View** on a received-file banner opens **Transfers → Received**; sent-file banners
+  open the **Sent** view.
+- Every in-app status message now uses the same top banner instead of bottom snackbars.
+- Linux desktop notifications are unchanged and still appear alongside the in-app banner.
 
 ### Reliability
 
@@ -233,11 +244,11 @@ system. QuickDrop detects the resulting interfaces but does not toggle tethering
 | Check | Result |
 | --- | --- |
 | `flutter analyze` | Clean (0 issues) |
-| `flutter test` | 34 tests passing |
+| `flutter test` | 45 tests passing |
 | Toolchain | Flutter 3.47.7 / Dart 3.13.5 |
 | Build mode | `flutter build apk --release` |
-| APK size | 53.9 MB (53,906,976 bytes) |
-| APK SHA-256 | `c587bba1696bb7b3f09f672003b319b8b8dbcb788c5a0f5b11e2095b85c780d6` |
+| APK size | 53.7 MB (53,726,752 bytes) |
+| APK SHA-256 | `7645639ec1751a1bf09c3fc5d8b23ba6146e7633884e72598f9b539a28d352d3` |
 
 Verify the downloaded APK:
 

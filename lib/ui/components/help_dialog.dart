@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../core/discovery_service.dart';
 import '../../core/platform_integrations.dart';
 import '../quickdrop_theme.dart';
+import 'top_notice.dart';
 
 class HelpDialog extends StatelessWidget {
   final DiscoveryService discovery;
@@ -85,7 +86,7 @@ class HelpDialog extends StatelessWidget {
                       final opened =
                           await PlatformIntegrations.openHotspotSettings();
                       if (!opened && context.mounted) {
-                        _toast(
+                        _notify(
                           context,
                           'Open Wi-Fi settings manually to enable the hotspot.',
                         );
@@ -287,9 +288,11 @@ class HelpDialog extends StatelessWidget {
     );
   }
 
-  void _toast(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+  void _notify(BuildContext context, String message) {
+    if (!context.mounted) return;
+    showTopNotice(
+      context,
+      TopNotice(message: message, tone: TopNoticeTone.info),
+    );
   }
 }

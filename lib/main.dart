@@ -4,6 +4,7 @@ import 'core/app_store.dart';
 import 'core/discovery_service.dart';
 import 'core/share_receiver.dart';
 import 'core/transfer_server.dart';
+import 'ui/components/top_notice.dart';
 import 'ui/quickdrop_screen.dart';
 import 'ui/quickdrop_theme.dart';
 
@@ -29,7 +30,7 @@ Future<void> main() async {
   ));
 }
 
-class QuickDropApp extends StatelessWidget {
+class QuickDropApp extends StatefulWidget {
   final DiscoveryService discoveryService;
   final TransferServer transferServer;
   final AppSettings settings;
@@ -42,15 +43,35 @@ class QuickDropApp extends StatelessWidget {
   });
 
   @override
+  State<QuickDropApp> createState() => _QuickDropAppState();
+}
+
+class _QuickDropAppState extends State<QuickDropApp> {
+  final TopNoticeCenter _notices = TopNoticeCenter();
+
+  @override
+  void dispose() {
+    _notices.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'QuickDrop',
-      debugShowCheckedModeBanner: false,
-      theme: QuickDropTheme.lightTheme,
-      home: QuickDropScreen(
-        discoveryService: discoveryService,
-        transferServer: transferServer,
-        settings: settings,
+    return TopNoticeScope(
+      controller: _notices,
+      child: MaterialApp(
+        title: 'QuickDrop',
+        debugShowCheckedModeBanner: false,
+        theme: QuickDropTheme.lightTheme,
+        builder: (context, child) => TopNoticeHost(
+          controller: _notices,
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: QuickDropScreen(
+          discoveryService: widget.discoveryService,
+          transferServer: widget.transferServer,
+          settings: widget.settings,
+        ),
       ),
     );
   }
