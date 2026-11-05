@@ -18,11 +18,11 @@ class TextTransfer {
   /// Returns a user-facing error, or null when the text can be sent.
   static String? validate(String text) {
     if (text.trim().isEmpty) return 'Nothing to send.';
-    if (text.length > maxCharacters) {
-      return 'Text is limited to $maxCharacters characters.';
-    }
     if (byteLength(text) > maxBytes) {
       return 'Text is limited to 64 KiB.';
+    }
+    if (text.length > maxCharacters) {
+      return 'Text is limited to $maxCharacters characters.';
     }
     return null;
   }

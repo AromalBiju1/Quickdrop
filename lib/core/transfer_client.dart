@@ -5,6 +5,7 @@ import 'dart:io';
 import '../models/device_peer.dart';
 import 'file_utils.dart';
 import 'link_errors.dart';
+import 'text_transfer.dart';
 
 class TransferResult {
   final bool success;
@@ -202,6 +203,89 @@ class TransferClient {
       );
     } finally {
       cancelToken?._detach();
+      client.close(force: true);
+    }
+  }
+
+  static Future<TransferResult> sendText({
+    required DevicePeer targetPeer,
+    required String text,
+    required String senderName,
+  }) async {
+    final startTime = DateTime.now();
+    final validation = TextTransfer.validate(text);
+    if (validation != null) {
+      return TransferResult(success: false, message: validation, durationMs: 0);
+    }
+
+    final bytes = utf8.encode(text);
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 5);
+    try {
+      final request = await client
+          .postUrl(
+            Uri.parse(
+              'http://${targetPeer.ip}:${targetPeer.httpPort}/api/transfer',
+            ),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      request.headers.set(
+        'X-File-Name',
+        Uri.encodeComponent(TextTransfer.fileName()),
+      );
+      request.headers.set('X-Sender-Name', Uri.encodeComponent(senderName));
+      request.headers.set(TextTransfer.header, '1');
+      request.headers.set('X-File-Type', 'text/plain');
+      request.headers.set('Content-Type', 'text/plain; charset=utf-8');
+      request.contentLength = bytes.length;
+      request.add(bytes);
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 10),
+      );
+      final responseBody = await utf8.decodeStream(response);
+      final duration = DateTime.now().difference(startTime).inMilliseconds;
+
+      if (response.statusCode == HttpStatus.ok) {
+        String? savedPath;
+        try {
+          final data = jsonDecode(responseBody) as Map<String, dynamic>;
+          savedPath = data['path'] as String?;
+        } catch (_) {}
+        return TransferResult(
+          success: true,
+          message:
+              'Text delivered in '
+              '${FileUtils.formatDuration(Duration(milliseconds: duration))}',
+          durationMs: duration,
+          savedPath: savedPath,
+          bytesSent: bytes.length,
+        );
+      }
+
+      return TransferResult(
+        success: false,
+        message: response.statusCode == HttpStatus.requestEntityTooLarge
+            ? 'The receiver rejected the text as too large.'
+            : 'Receiver returned HTTP ${response.statusCode}',
+        durationMs: duration,
+        bytesSent: bytes.length,
+      );
+    } catch (e) {
+      if (e.toString().contains('TimeoutException')) {
+        return TransferResult(
+          success: false,
+          message: 'The receiver did not respond within 10 seconds.',
+          durationMs: DateTime.now().difference(startTime).inMilliseconds,
+        );
+      }
+      return TransferResult(
+        success: false,
+        message: linkDropMessage(e, targetPeer.link) ?? _friendlyError(e),
+        durationMs: DateTime.now().difference(startTime).inMilliseconds,
+      );
+    } finally {
       client.close(force: true);
     }
   }
