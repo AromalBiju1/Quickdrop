@@ -59,24 +59,24 @@ class _ManualConnectDialogState extends State<ManualConnectDialog> {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: QuickDropColors.emeraldSoft,
+              color: context.qd.emeraldSoft,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.add_link_rounded,
-              color: QuickDropColors.emeraldDark,
+              color: context.qd.emeraldDark,
               size: 20,
             ),
           ),
           const SizedBox(width: 11),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Connect by IP',
                   style: TextStyle(
-                    color: QuickDropColors.textPrimary,
+                    color: context.qd.textPrimary,
                     fontSize: 17,
                     height: 1.3,
                     fontWeight: FontWeight.w600,
@@ -87,7 +87,7 @@ class _ManualConnectDialogState extends State<ManualConnectDialog> {
                 Text(
                   'For networks that block discovery.',
                   style: TextStyle(
-                    color: QuickDropColors.textMuted,
+                    color: context.qd.textMuted,
                     fontSize: 11,
                     height: 1.3,
                   ),
@@ -104,10 +104,10 @@ class _ManualConnectDialogState extends State<ManualConnectDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Open QuickDrop on the other device and read its address from the Receive tab. Enter the address here.',
                 style: TextStyle(
-                  color: QuickDropColors.textSecondary,
+                  color: context.qd.textSecondary,
                   fontSize: 12.5,
                   height: 1.5,
                 ),
@@ -123,8 +123,8 @@ class _ManualConnectDialogState extends State<ManualConnectDialog> {
                 onChanged: (_) {
                   if (_error != null) setState(() => _error = null);
                 },
-                style: const TextStyle(
-                  color: QuickDropColors.textPrimary,
+                style: TextStyle(
+                  color: context.qd.textPrimary,
                   fontFamily: 'monospace',
                   fontSize: 13.5,
                 ),
@@ -142,23 +142,23 @@ class _ManualConnectDialogState extends State<ManualConnectDialog> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: QuickDropColors.surfaceMuted,
+                  color: context.qd.surfaceMuted,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: QuickDropColors.border),
+                  border: Border.all(color: context.qd.border),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.computer_rounded,
-                      color: QuickDropColors.textMuted,
+                      color: context.qd.textMuted,
                       size: 16,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'This device · ${widget.discovery.localIp}:${widget.discovery.httpPort}',
-                        style: const TextStyle(
-                          color: QuickDropColors.textSecondary,
+                        style: TextStyle(
+                          color: context.qd.textSecondary,
                           fontSize: 11.5,
                           fontFamily: 'monospace',
                         ),
@@ -176,7 +176,7 @@ class _ManualConnectDialogState extends State<ManualConnectDialog> {
         TextButton(
           onPressed: _loading ? null : () => Navigator.pop(context),
           style: TextButton.styleFrom(
-            foregroundColor: QuickDropColors.textSecondary,
+            foregroundColor: context.qd.textSecondary,
           ),
           child: const Text('Cancel'),
         ),
@@ -190,12 +190,12 @@ class _ManualConnectDialogState extends State<ManualConnectDialog> {
             ),
           ),
           child: _loading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 17,
                   height: 17,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: context.qd.onAccent,
                   ),
                 )
               : const Text('Connect'),

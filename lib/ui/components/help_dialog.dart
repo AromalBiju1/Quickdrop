@@ -15,6 +15,7 @@ class HelpDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qd;
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 4),
@@ -25,24 +26,20 @@ class HelpDialog extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: QuickDropColors.emeraldSoft,
+              color: p.emeraldSoft,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.wifi_off_rounded,
-              color: QuickDropColors.emeraldDark,
-              size: 20,
-            ),
+            child: Icon(Icons.wifi_off_rounded, color: p.emeraldDark, size: 20),
           ),
           const SizedBox(width: 11),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Connection help',
                   style: TextStyle(
-                    color: QuickDropColors.textPrimary,
+                    color: p.textPrimary,
                     fontSize: 17,
                     height: 1.3,
                     fontWeight: FontWeight.w600,
@@ -52,10 +49,7 @@ class HelpDialog extends StatelessWidget {
                 SizedBox(height: 2),
                 Text(
                   'Offline transfers, explained',
-                  style: TextStyle(
-                    color: QuickDropColors.textMuted,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: p.textMuted, fontSize: 11),
                 ),
               ],
             ),
@@ -69,13 +63,13 @@ class HelpDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _intro(),
+              _intro(p),
               const SizedBox(height: 20),
               _section(
+                p: p,
                 icon: Icons.wifi_tethering_rounded,
                 title: 'Use a hotspot',
-                body:
-                    'Turn on a phone hotspot, connect both devices to it and keep QuickDrop open. A hotspot without mobile data is enough — the devices only need to reach each other.',
+                body: 'Turn on a phone hotspot, connect both devices to it and keep QuickDrop open. A hotspot without mobile data is enough — the devices only need to reach each other.',
               ),
               if (Platform.isAndroid) ...[
                 const SizedBox(height: 8),
@@ -107,29 +101,30 @@ class HelpDialog extends StatelessWidget {
               ],
               const SizedBox(height: 18),
               _section(
+                p: p,
                 icon: Icons.lan_rounded,
                 title: 'Same Wi-Fi, different subnet?',
-                body:
-                    'If discovery does not find the other device, use Connect by IP and enter its address. QuickDrop also scans the local subnet over HTTP when UDP broadcast is blocked.',
+                body: 'If discovery does not find the other device, use Connect by IP and enter its address. QuickDrop also scans the local subnet over HTTP when UDP broadcast is blocked.',
               ),
               const SizedBox(height: 18),
               _section(
+                p: p,
                 icon: Icons.usb_rounded,
                 title: 'No network at all',
-                body:
-                    'USB tethering creates a local network without internet. Or connect the phone by USB and run this on the computer, then use Connect by IP with 127.0.0.1:53318:',
+                body: 'USB tethering creates a local network without internet. Or connect the phone by USB and run this on the computer, then use Connect by IP with 127.0.0.1:53318:',
                 code: 'adb reverse tcp:53319 tcp:53318',
               ),
               const SizedBox(height: 18),
               _section(
+                p: p,
                 icon: Icons.shield_outlined,
                 title: 'Nothing is connecting?',
-                body:
-                    'A firewall is the usual culprit. Allow the receiver ports once on Linux, then press scan again in QuickDrop:',
+                body: 'A firewall is the usual culprit. Allow the receiver ports once on Linux, then press scan again in QuickDrop:',
                 code: 'sudo ufw allow 53318/tcp && sudo ufw allow 53317/udp',
               ),
               const SizedBox(height: 18),
               _section(
+                p: p,
                 icon: Icons.language_rounded,
                 title: 'No app on the other device',
                 body:
@@ -156,22 +151,22 @@ class HelpDialog extends StatelessWidget {
     );
   }
 
-  Widget _intro() {
+  Widget _intro(QuickDropPalette p) {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: QuickDropColors.emeraldSoft,
+        color: p.emeraldSoft,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: QuickDropColors.emeraldBorder),
+        border: Border.all(color: p.emeraldBorder),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: EdgeInsets.only(top: 1),
             child: Icon(
               Icons.lock_outline_rounded,
-              color: QuickDropColors.emeraldDark,
+              color: p.emeraldDark,
               size: 17,
             ),
           ),
@@ -180,7 +175,7 @@ class HelpDialog extends StatelessWidget {
             child: Text(
               'QuickDrop sends files directly between devices. Nothing is uploaded and no internet connection is used. Both devices just need to share a local network — Wi-Fi, a hotspot, or USB tethering.',
               style: TextStyle(
-                color: QuickDropColors.emeraldDeep,
+                color: p.emeraldDeep,
                 fontSize: 11.5,
                 height: 1.6,
               ),
@@ -192,6 +187,7 @@ class HelpDialog extends StatelessWidget {
   }
 
   Widget _section({
+    required QuickDropPalette p,
     required IconData icon,
     required String title,
     required String body,
@@ -206,21 +202,17 @@ class HelpDialog extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: QuickDropColors.surfaceSubtle,
+                color: p.surfaceSubtle,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
-                icon,
-                size: 15,
-                color: QuickDropColors.emeraldDark,
-              ),
+              child: Icon(icon, size: 15, color: p.emeraldDark),
             ),
             const SizedBox(width: 9),
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  color: QuickDropColors.textPrimary,
+                style: TextStyle(
+                  color: p.textPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -233,39 +225,35 @@ class HelpDialog extends StatelessWidget {
           padding: const EdgeInsets.only(left: 37),
           child: Text(
             body,
-            style: const TextStyle(
-              color: QuickDropColors.textMuted,
-              fontSize: 11.5,
-              height: 1.6,
-            ),
+            style: TextStyle(color: p.textMuted, fontSize: 11.5, height: 1.6),
           ),
         ),
         if (code != null) ...[
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.only(left: 37),
-            child: _codeBlock(code),
+            child: _codeBlock(code, p),
           ),
         ],
       ],
     );
   }
 
-  Widget _codeBlock(String code) {
+  Widget _codeBlock(String code, QuickDropPalette p) {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
       decoration: BoxDecoration(
-        color: QuickDropColors.surfaceMuted,
+        color: p.surfaceMuted,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: QuickDropColors.border),
+        border: Border.all(color: p.border),
       ),
       child: Row(
         children: [
           Expanded(
             child: SelectableText(
               code,
-              style: const TextStyle(
-                color: QuickDropColors.textSecondary,
+              style: TextStyle(
+                color: p.textSecondary,
                 fontSize: 10.5,
                 fontFamily: 'monospace',
               ),
@@ -277,11 +265,7 @@ class HelpDialog extends StatelessWidget {
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: code));
             },
-            icon: const Icon(
-              Icons.copy_rounded,
-              size: 14,
-              color: QuickDropColors.textMuted,
-            ),
+            icon: Icon(Icons.copy_rounded, size: 14, color: p.textMuted),
           ),
         ],
       ),

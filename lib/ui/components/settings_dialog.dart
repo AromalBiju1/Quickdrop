@@ -77,14 +77,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
         children: [
           const QuickDropLogo(size: 36),
           const SizedBox(width: 11),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Settings',
                   style: TextStyle(
-                    color: QuickDropColors.textPrimary,
+                    color: context.qd.textPrimary,
                     fontSize: 17,
                     height: 1.3,
                     fontWeight: FontWeight.w600,
@@ -94,10 +94,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 SizedBox(height: 2),
                 Text(
                   'QuickDrop 1.1.0',
-                  style: TextStyle(
-                    color: QuickDropColors.textMuted,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: context.qd.textMuted, fontSize: 11),
                 ),
               ],
             ),
@@ -120,24 +117,21 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 onChanged: (_) {
                   if (_error != null) setState(() => _error = null);
                 },
-                style: const TextStyle(
-                  color: QuickDropColors.textPrimary,
-                  fontSize: 13.5,
-                ),
+                style: TextStyle(color: context.qd.textPrimary, fontSize: 13.5),
                 decoration: InputDecoration(
                   hintText: 'My laptop',
                   errorText: _error,
-                  counterStyle: const TextStyle(
-                    color: QuickDropColors.textFaint,
+                  counterStyle: TextStyle(
+                    color: context.qd.textFaint,
                     fontSize: 10,
                   ),
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Shown to nearby devices and in the browser receiver.',
                 style: TextStyle(
-                  color: QuickDropColors.textMuted,
+                  color: context.qd.textMuted,
                   fontSize: 11,
                   height: 1.4,
                 ),
@@ -149,9 +143,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: QuickDropColors.surface,
+                  color: context.qd.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: QuickDropColors.border),
+                  border: Border.all(color: context.qd.border),
                 ),
                 child: Column(
                   children: [
@@ -185,15 +179,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: QuickDropColors.surfaceMuted,
+                      color: context.qd.surfaceMuted,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: QuickDropColors.border),
+                      border: Border.all(color: context.qd.border),
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.folder_outlined,
-                          color: QuickDropColors.textMuted,
+                          color: context.qd.textMuted,
                           size: 16,
                         ),
                         const SizedBox(width: 8),
@@ -201,10 +195,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'SAVE LOCATION',
                                 style: TextStyle(
-                                  color: QuickDropColors.textMuted,
+                                  color: context.qd.textMuted,
                                   fontSize: 9,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 0.7,
@@ -215,8 +209,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                 path,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: QuickDropColors.textSecondary,
+                                style: TextStyle(
+                                  color: context.qd.textSecondary,
                                   fontSize: 10.5,
                                   fontFamily: 'monospace',
                                 ),
@@ -246,19 +240,19 @@ class _SettingsDialogState extends State<SettingsDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: QuickDropColors.surfaceMuted,
+                  color: context.qd.surfaceMuted,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: QuickDropColors.border),
+                  border: Border.all(color: context.qd.border),
                 ),
                 child: Column(
                   children: [
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Receiver',
                             style: TextStyle(
-                              color: QuickDropColors.textSecondary,
+                              color: context.qd.textSecondary,
                               fontSize: 11.5,
                             ),
                           ),
@@ -266,23 +260,23 @@ class _SettingsDialogState extends State<SettingsDialog> {
                         StatusPill(
                           label: running ? 'Online' : 'Offline',
                           foreground: running
-                              ? QuickDropColors.emeraldDark
-                              : QuickDropColors.roseDark,
+                              ? context.qd.emeraldDark
+                              : context.qd.roseDark,
                           background: running
-                              ? QuickDropColors.emeraldSoft
-                              : QuickDropColors.roseSoft,
+                              ? context.qd.emeraldSoft
+                              : context.qd.roseSoft,
                         ),
                       ],
                     ),
                     const SizedBox(height: 9),
                     Row(
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           width: 82,
                           child: Text(
                             'Local address',
                             style: TextStyle(
-                              color: QuickDropColors.textSecondary,
+                              color: context.qd.textSecondary,
                               fontSize: 11.5,
                             ),
                           ),
@@ -290,8 +284,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                         Expanded(
                           child: SelectableText(
                             '${discovery.localIp}:${discovery.httpPort}',
-                            style: const TextStyle(
-                              color: QuickDropColors.textPrimary,
+                            style: TextStyle(
+                              color: context.qd.textPrimary,
                               fontSize: 11,
                               fontFamily: 'monospace',
                             ),
@@ -302,12 +296,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     const SizedBox(height: 7),
                     Row(
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           width: 82,
                           child: Text(
                             'Device ID',
                             style: TextStyle(
-                              color: QuickDropColors.textSecondary,
+                              color: context.qd.textSecondary,
                               fontSize: 11.5,
                             ),
                           ),
@@ -316,8 +310,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           child: SelectableText(
                             discovery.deviceId,
                             maxLines: 1,
-                            style: const TextStyle(
-                              color: QuickDropColors.textMuted,
+                            style: TextStyle(
+                              color: context.qd.textMuted,
                               fontSize: 10.5,
                               fontFamily: 'monospace',
                             ),
@@ -343,23 +337,23 @@ class _SettingsDialogState extends State<SettingsDialog> {
                         vertical: 11,
                       ),
                       decoration: BoxDecoration(
-                        color: QuickDropColors.surfaceMuted,
+                        color: context.qd.surfaceMuted,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: QuickDropColors.border),
+                        border: Border.all(color: context.qd.border),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(
                             Icons.link_off_rounded,
                             size: 15,
-                            color: QuickDropColors.textFaint,
+                            color: context.qd.textFaint,
                           ),
                           SizedBox(width: 7),
                           Expanded(
                             child: Text(
                               'No active links yet. Connect to Wi-Fi or enable tethering.',
                               style: TextStyle(
-                                color: QuickDropColors.textMuted,
+                                color: context.qd.textMuted,
                                 fontSize: 10.5,
                                 height: 1.4,
                               ),
@@ -372,19 +366,19 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
                   return Container(
                     decoration: BoxDecoration(
-                      color: QuickDropColors.surface,
+                      color: context.qd.surface,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: QuickDropColors.border),
+                      border: Border.all(color: context.qd.border),
                     ),
                     child: Column(
                       children: [
                         for (var i = 0; i < links.length; i++) ...[
                           if (i > 0)
-                            const Divider(
+                            Divider(
                               height: 1,
                               indent: 12,
                               endIndent: 12,
-                              color: QuickDropColors.surfaceSubtle,
+                              color: context.qd.surfaceSubtle,
                             ),
                           Padding(
                             padding: const EdgeInsets.symmetric(
@@ -404,8 +398,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                         links[i].name,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: QuickDropColors.textSecondary,
+                                        style: TextStyle(
+                                          color: context.qd.textSecondary,
                                           fontSize: 11,
                                           fontFamily: 'monospace',
                                         ),
@@ -413,8 +407,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                       const SizedBox(height: 1),
                                       Text(
                                         links[i].ip,
-                                        style: const TextStyle(
-                                          color: QuickDropColors.textMuted,
+                                        style: TextStyle(
+                                          color: context.qd.textMuted,
                                           fontSize: 10,
                                           fontFamily: 'monospace',
                                         ),
@@ -424,8 +418,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                 ),
                                 Text(
                                   'priority ${links[i].rank}',
-                                  style: const TextStyle(
-                                    color: QuickDropColors.textFaint,
+                                  style: TextStyle(
+                                    color: context.qd.textFaint,
                                     fontSize: 9.5,
                                   ),
                                 ),
@@ -439,19 +433,19 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 },
               ),
               const SizedBox(height: 10),
-              const Row(
+              Row(
                 children: [
                   Icon(
                     Icons.wifi_off_rounded,
                     size: 14,
-                    color: QuickDropColors.textFaint,
+                    color: context.qd.textFaint,
                   ),
                   SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       'Works offline on a local network or hotspot.',
                       style: TextStyle(
-                        color: QuickDropColors.textMuted,
+                        color: context.qd.textMuted,
                         fontSize: 10.5,
                       ),
                     ),
@@ -467,7 +461,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
           style: TextButton.styleFrom(
-            foregroundColor: QuickDropColors.textSecondary,
+            foregroundColor: context.qd.textSecondary,
           ),
           child: const Text('Cancel'),
         ),
@@ -481,12 +475,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ),
           ),
           child: _saving
-              ? const SizedBox(
+              ? SizedBox(
                   width: 17,
                   height: 17,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: context.qd.onAccent,
                   ),
                 )
               : const Text('Save changes'),
@@ -498,8 +492,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
   Widget _sectionLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
-        color: QuickDropColors.textMuted,
+      style: TextStyle(
+        color: context.qd.textMuted,
         fontSize: 10,
         height: 1.2,
         fontWeight: FontWeight.w600,
@@ -524,8 +518,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: QuickDropColors.textPrimary,
+                  style: TextStyle(
+                    color: context.qd.textPrimary,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
                   ),
@@ -533,8 +527,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: QuickDropColors.textMuted,
+                  style: TextStyle(
+                    color: context.qd.textMuted,
                     fontSize: 10.5,
                     height: 1.35,
                   ),

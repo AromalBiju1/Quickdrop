@@ -25,11 +25,11 @@ class QrDialog extends StatelessWidget {
       contentPadding: const EdgeInsets.fromLTRB(22, 0, 22, 8),
       title: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               'Receive from any device',
               style: TextStyle(
-                color: QuickDropColors.textPrimary,
+                color: context.qd.textPrimary,
                 fontSize: 17,
                 height: 1.3,
                 fontWeight: FontWeight.w600,
@@ -53,11 +53,11 @@ class QrDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Scan this code with the other device’s camera. The browser receiver opens instantly, with no app or account.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: QuickDropColors.textSecondary,
+                  color: context.qd.textSecondary,
                   fontSize: 12.5,
                   height: 1.5,
                 ),
@@ -68,7 +68,7 @@ class QrDialog extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: QuickDropColors.border),
+                  border: Border.all(color: context.qd.border),
                 ),
                 child: QrImageView(
                   data: webUrl,
@@ -76,13 +76,13 @@ class QrDialog extends StatelessWidget {
                   size: 220,
                   padding: EdgeInsets.zero,
                   backgroundColor: Colors.white,
-                  eyeStyle: const QrEyeStyle(
+                  eyeStyle: QrEyeStyle(
                     eyeShape: QrEyeShape.square,
-                    color: QuickDropColors.onyx,
+                    color: context.qd.onyx,
                   ),
-                  dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleStyle: QrDataModuleStyle(
                     dataModuleShape: QrDataModuleShape.square,
-                    color: QuickDropColors.onyx,
+                    color: context.qd.onyx,
                   ),
                 ),
               ),
@@ -90,8 +90,8 @@ class QrDialog extends StatelessWidget {
               SelectableText(
                 webUrl,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: QuickDropColors.emeraldDark,
+                style: TextStyle(
+                  color: context.qd.emeraldDark,
                   fontSize: 12,
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.w500,
@@ -101,25 +101,22 @@ class QrDialog extends StatelessWidget {
               Text(
                 'Receiving on $deviceName',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: QuickDropColors.textMuted,
-                  fontSize: 10.5,
-                ),
+                style: TextStyle(color: context.qd.textMuted, fontSize: 10.5),
               ),
               const SizedBox(height: 10),
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.wifi_off_rounded,
                     size: 13,
-                    color: QuickDropColors.textFaint,
+                    color: context.qd.textFaint,
                   ),
                   SizedBox(width: 5),
                   Text(
                     'No internet or installation needed',
                     style: TextStyle(
-                      color: QuickDropColors.textMuted,
+                      color: context.qd.textMuted,
                       fontSize: 10.5,
                     ),
                   ),

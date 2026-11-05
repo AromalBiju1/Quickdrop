@@ -75,7 +75,7 @@ void main() {
 
     expect(find.text('Transfers'), findsWidgets);
     final received = tester.widget<Text>(find.text('Received'));
-    expect(received.style?.color, QuickDropColors.textPrimary);
+    expect(received.style?.color, QuickDropPalette.light.textPrimary);
     expect(find.text('2 files received'), findsNothing);
   });
 }
