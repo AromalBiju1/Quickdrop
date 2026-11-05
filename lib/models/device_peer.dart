@@ -25,15 +25,15 @@ class DevicePeer {
   }) : lastSeen = lastSeen ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'protocol': 'quickdrop_v1',
-        'id': id,
-        'name': name,
-        'device_type': deviceType,
-        'ip': ip,
-        'http_port': httpPort,
-        'manual': isManual,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      };
+    'protocol': 'quickdrop_v1',
+    'id': id,
+    'name': name,
+    'device_type': deviceType,
+    'ip': ip,
+    'http_port': httpPort,
+    'manual': isManual,
+    'timestamp': DateTime.now().millisecondsSinceEpoch,
+  };
 
   factory DevicePeer.fromJson(Map<String, dynamic> json, String fallbackIp) {
     return DevicePeer(
@@ -76,13 +76,13 @@ class DevicePeer {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is DevicePeer &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
+      other is DevicePeer && runtimeType == other.runtimeType && id == other.id;
 
   @override
   int get hashCode => id.hashCode;
 }
+
+enum TransferKind { file, text }
 
 class TransferItem {
   final String id;
@@ -95,6 +95,8 @@ class TransferItem {
   final DateTime timestamp;
   final bool success;
   final String? batchId;
+  final TransferKind kind;
+  final String? preview;
 
   TransferItem({
     required this.id,
@@ -107,38 +109,49 @@ class TransferItem {
     required this.success,
     this.contentUri,
     this.batchId,
+    this.kind = TransferKind.file,
+    this.preview,
   });
+
+  bool get isText => kind == TransferKind.text;
 
   bool get isImage => FileUtils.isImage(fileName);
 
   String get formattedSize => FileUtils.formatBytes(fileSize);
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'file_name': fileName,
-        'file_size': fileSize,
-        'file_path': filePath,
-        'content_uri': contentUri,
-        'sender_name': senderName,
-        'is_incoming': isIncoming,
-        'timestamp': timestamp.toIso8601String(),
-        'success': success,
-        'batch_id': batchId,
-      };
+    'id': id,
+    'file_name': fileName,
+    'file_size': fileSize,
+    'file_path': filePath,
+    'content_uri': contentUri,
+    'sender_name': senderName,
+    'is_incoming': isIncoming,
+    'timestamp': timestamp.toIso8601String(),
+    'success': success,
+    'batch_id': batchId,
+    'kind': kind == TransferKind.text ? 'text' : 'file',
+    if (kind == TransferKind.text) 'preview': preview,
+  };
 
   factory TransferItem.fromJson(Map<String, dynamic> json) {
     return TransferItem(
-      id: json['id'] as String? ?? 'tx_${DateTime.now().microsecondsSinceEpoch}',
+      id:
+          json['id'] as String? ??
+          'tx_${DateTime.now().microsecondsSinceEpoch}',
       fileName: json['file_name'] as String? ?? 'file',
       fileSize: (json['file_size'] as num?)?.toInt() ?? 0,
       filePath: json['file_path'] as String? ?? '',
       contentUri: json['content_uri'] as String?,
       senderName: json['sender_name'] as String? ?? 'Unknown',
       isIncoming: json['is_incoming'] as bool? ?? true,
-      timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ??
+      timestamp:
+          DateTime.tryParse(json['timestamp'] as String? ?? '') ??
           DateTime.now(),
       success: json['success'] as bool? ?? true,
       batchId: json['batch_id'] as String?,
+      kind: json['kind'] == 'text' ? TransferKind.text : TransferKind.file,
+      preview: json['preview'] as String?,
     );
   }
 }
