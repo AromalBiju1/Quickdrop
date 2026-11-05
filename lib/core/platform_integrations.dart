@@ -121,6 +121,16 @@ class PlatformIntegrations {
     return false;
   }
 
+  /// Puts plain text on the system clipboard on every supported platform.
+  static Future<bool> copyTextToClipboard(String text) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> showDesktopNotification(
     String title,
     String message, {

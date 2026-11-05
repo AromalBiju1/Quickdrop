@@ -10,6 +10,7 @@ import '../models/device_peer.dart';
 import 'app_store.dart';
 import 'file_utils.dart';
 import 'platform_integrations.dart';
+import 'text_transfer.dart';
 
 class TransferServer {
   static const int serverPort = 53318;
@@ -19,6 +20,7 @@ class TransferServer {
   final int port;
   final String? saveDirectoryOverride;
   final bool enablePersistence;
+  final Future<bool> Function(String text)? copyTextOverride;
 
   bool autoCopyImages = true;
   bool notifications = true;
@@ -38,6 +40,7 @@ class TransferServer {
     this.port = serverPort,
     this.saveDirectoryOverride,
     this.enablePersistence = true,
+    this.copyTextOverride,
   });
 
   Future<void> start() async {
@@ -177,6 +180,10 @@ class TransferServer {
   }
 
   Future<void> _handleIncomingTransfer(HttpRequest request) async {
+    if (request.headers.value(TextTransfer.header) == '1') {
+      await _handleIncomingText(request);
+      return;
+    }
     File? tempFile;
     try {
       final rawFileName = request.headers.value('X-File-Name');
@@ -313,6 +320,172 @@ class TransferServer {
         await request.response.close();
       } catch (_) {}
     }
+  }
+
+  Future<void> _handleIncomingText(HttpRequest request) async {
+    File? tempFile;
+    try {
+      final bytes = <int>[];
+      var totalBytes = 0;
+
+      // Read the whole body but only keep the first 64 KiB. Draining the rest
+      // lets the sender receive the 413 instead of a connection reset.
+      await for (final chunk in request) {
+        totalBytes += chunk.length;
+        if (totalBytes <= TextTransfer.maxBytes) {
+          bytes.addAll(chunk);
+        }
+      }
+
+      if (totalBytes > TextTransfer.maxBytes) {
+        await _writeJsonError(
+          request,
+          HttpStatus.requestEntityTooLarge,
+          'Text is limited to 64 KiB.',
+        );
+        return;
+      }
+
+      String text;
+      try {
+        text = utf8.decode(bytes);
+      } on FormatException {
+        await _writeJsonError(
+          request,
+          HttpStatus.badRequest,
+          'Text must be UTF-8.',
+        );
+        return;
+      }
+
+      if (text.trim().isEmpty) {
+        await _writeJsonError(request, HttpStatus.badRequest, 'Text is empty.');
+        return;
+      }
+
+      if (text.length > TextTransfer.maxCharacters) {
+        await _writeJsonError(
+          request,
+          HttpStatus.requestEntityTooLarge,
+          'Text is limited to ${TextTransfer.maxCharacters} characters.',
+        );
+        return;
+      }
+
+      final rawName = request.headers.value('X-File-Name');
+      var fileName = FileUtils.sanitizeFileName(
+        rawName != null && rawName.isNotEmpty
+            ? Uri.decodeComponent(rawName)
+            : TextTransfer.fileName(),
+      );
+      if (!fileName.toLowerCase().endsWith('.txt')) {
+        fileName = '$fileName.txt';
+      }
+      final senderName = Uri.decodeComponent(
+        request.headers.value('X-Sender-Name') ?? 'Unknown',
+      );
+
+      final saveDir = await getSaveDirectory(fileName: fileName);
+      final targetFile = await FileUtils.uniqueFile(saveDir, fileName);
+      tempFile = File('${targetFile.path}.part');
+      await tempFile.writeAsBytes(bytes, flush: true);
+      await tempFile.rename(targetFile.path);
+      tempFile = null;
+
+      var savedPath = targetFile.path;
+      String? savedUri;
+      if (Platform.isAndroid) {
+        final saved = await PlatformIntegrations.saveToDownloads(
+          path: targetFile.path,
+          fileName: FileUtils.fileName(targetFile.path),
+          mimeType: 'text/plain',
+        );
+        if (saved != null) {
+          savedPath = saved.path;
+          savedUri = saved.uri;
+          try {
+            await targetFile.delete();
+          } catch (e) {
+            debugPrint('[Server] Could not remove text staging file: $e');
+          }
+        }
+      }
+
+      var copied = false;
+      try {
+        copied =
+            await (copyTextOverride ??
+                PlatformIntegrations.copyTextToClipboard)(text);
+      } catch (e) {
+        debugPrint('[Server] Could not copy text to clipboard: $e');
+      }
+
+      final isDesktop = Platform.isLinux || Platform.isWindows;
+      if (isDesktop && notifications) {
+        await PlatformIntegrations.showDesktopNotification(
+          'QuickDrop • Text received',
+          '${TextTransfer.notificationPreview(text)} from $senderName'
+              '${copied ? ' • copied to clipboard' : ' • saved without clipboard'}',
+        );
+      }
+
+      final item = TransferItem(
+        id: 'rx_${DateTime.now().microsecondsSinceEpoch}',
+        fileName: FileUtils.fileName(savedPath),
+        fileSize: totalBytes,
+        filePath: savedPath,
+        contentUri: savedUri,
+        senderName: senderName,
+        isIncoming: true,
+        timestamp: DateTime.now(),
+        success: true,
+        kind: TransferKind.text,
+        preview: TextTransfer.preview(text),
+      );
+      addIncomingHistory(item);
+
+      request.response
+        ..headers.contentType = ContentType.json
+        ..statusCode = HttpStatus.ok
+        ..write(
+          jsonEncode({
+            'status': 'success',
+            'kind': 'text',
+            'file': item.fileName,
+            'path': item.filePath,
+            'uri': item.contentUri,
+            'size': item.fileSize,
+            'clipboard': copied,
+          }),
+        );
+      await request.response.close();
+    } catch (e, st) {
+      debugPrint('[Server] Error handling text transfer: $e\n$st');
+      try {
+        if (tempFile != null && await tempFile.exists()) {
+          await tempFile.delete();
+        }
+      } catch (_) {}
+      await _writeJsonError(
+        request,
+        HttpStatus.internalServerError,
+        e.toString(),
+      );
+    }
+  }
+
+  Future<void> _writeJsonError(
+    HttpRequest request,
+    int status,
+    String message,
+  ) async {
+    try {
+      request.response
+        ..headers.contentType = ContentType.json
+        ..statusCode = status
+        ..write(jsonEncode({'error': message}));
+      await request.response.close();
+    } catch (_) {}
   }
 
   void addIncomingHistory(TransferItem item) => _addTransferHistory(item);
