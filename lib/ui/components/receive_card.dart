@@ -25,13 +25,14 @@ class ReceiveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qd;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: QuickDropColors.surface,
+        color: p.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: QuickDropColors.border),
-        boxShadow: QuickDropColors.cardShadow,
+        border: Border.all(color: p.border),
+        boxShadow: p.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -42,24 +43,24 @@ class ReceiveCard extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: QuickDropColors.emeraldSoft,
+                  color: p.emeraldSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.language_rounded,
-                  color: QuickDropColors.emeraldDark,
+                  color: p.emeraldDark,
                   size: 20,
                 ),
               ),
               const SizedBox(width: 11),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Receive without the app',
                       style: TextStyle(
-                        color: QuickDropColors.textPrimary,
+                        color: p.textPrimary,
                         fontSize: 15,
                         height: 1.3,
                         fontWeight: FontWeight.w600,
@@ -69,10 +70,7 @@ class ReceiveCard extends StatelessWidget {
                     SizedBox(height: 2),
                     Text(
                       'Use any browser on the same network.',
-                      style: TextStyle(
-                        color: QuickDropColors.textMuted,
-                        fontSize: 11.5,
-                      ),
+                      style: TextStyle(color: p.textMuted, fontSize: 11.5),
                     ),
                   ],
                 ),
@@ -82,8 +80,8 @@ class ReceiveCard extends StatelessWidget {
           const SizedBox(height: 18),
           LayoutBuilder(
             builder: (context, constraints) {
-              final qr = _qr();
-              final details = _details();
+              final qr = _qr(p);
+              final details = _details(p);
               if (constraints.maxWidth < 390) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -105,21 +103,14 @@ class ReceiveCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(
-                Icons.folder_outlined,
-                size: 15,
-                color: QuickDropColors.textMuted,
-              ),
+              Icon(Icons.folder_outlined, size: 15, color: p.textMuted),
               const SizedBox(width: 7),
               Expanded(
                 child: Text(
                   'Files save to the received folder',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: QuickDropColors.textMuted,
-                    fontSize: 11.5,
-                  ),
+                  style: TextStyle(color: p.textMuted, fontSize: 11.5),
                 ),
               ),
               TextButton(
@@ -138,10 +129,10 @@ class ReceiveCard extends StatelessWidget {
                   minimumSize: const Size(32, 32),
                   maximumSize: const Size(32, 32),
                 ),
-                icon: const Icon(
+                icon: Icon(
                   Icons.help_outline_rounded,
                   size: 17,
-                  color: QuickDropColors.textFaint,
+                  color: p.textFaint,
                 ),
               ),
             ],
@@ -151,7 +142,7 @@ class ReceiveCard extends StatelessWidget {
     );
   }
 
-  Widget _qr() {
+  Widget _qr(QuickDropPalette p) {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onShowQr,
@@ -160,7 +151,7 @@ class ReceiveCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: QuickDropColors.border),
+          border: Border.all(color: p.border),
         ),
         child: QrImageView(
           data: webUrl,
@@ -168,27 +159,24 @@ class ReceiveCard extends StatelessWidget {
           size: 116,
           padding: EdgeInsets.zero,
           backgroundColor: Colors.white,
-          eyeStyle: const QrEyeStyle(
-            eyeShape: QrEyeShape.square,
-            color: QuickDropColors.onyx,
-          ),
-          dataModuleStyle: const QrDataModuleStyle(
+          eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: p.onyx),
+          dataModuleStyle: QrDataModuleStyle(
             dataModuleShape: QrDataModuleShape.square,
-            color: QuickDropColors.onyx,
+            color: p.onyx,
           ),
         ),
       ),
     );
   }
 
-  Widget _details() {
+  Widget _details(QuickDropPalette p) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'BROWSER ADDRESS',
           style: TextStyle(
-            color: QuickDropColors.textMuted,
+            color: p.textMuted,
             fontSize: 10,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
@@ -201,9 +189,9 @@ class ReceiveCard extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
             decoration: BoxDecoration(
-              color: QuickDropColors.surfaceMuted,
+              color: p.surfaceMuted,
               borderRadius: BorderRadius.circular(9),
-              border: Border.all(color: QuickDropColors.border),
+              border: Border.all(color: p.border),
             ),
             child: Row(
               children: [
@@ -212,8 +200,8 @@ class ReceiveCard extends StatelessWidget {
                     webUrl,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: QuickDropColors.emeraldDark,
+                    style: TextStyle(
+                      color: p.emeraldDark,
                       fontSize: 11.5,
                       fontFamily: 'monospace',
                       fontWeight: FontWeight.w500,
@@ -221,11 +209,7 @@ class ReceiveCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(
-                  Icons.copy_rounded,
-                  size: 13,
-                  color: QuickDropColors.textMuted,
-                ),
+                Icon(Icons.copy_rounded, size: 13, color: p.textMuted),
               ],
             ),
           ),
@@ -233,7 +217,7 @@ class ReceiveCard extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           'Open this address in a browser on the other device, then drop files into the page. Nothing to install.',
-          style: QuickDropText.small,
+          style: TextStyle(fontSize: 12, height: 1.5, color: p.textMuted),
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -279,10 +263,7 @@ class ReceiveCard extends StatelessWidget {
           'Receiving on $deviceName',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: QuickDropColors.textFaint,
-            fontSize: 10.5,
-          ),
+          style: TextStyle(color: p.textFaint, fontSize: 10.5),
         ),
       ],
     );

@@ -23,13 +23,14 @@ class DeviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qd;
     return Material(
       color: selected
-          ? QuickDropColors.emeraldSoft.withValues(alpha: 0.55)
+          ? p.emeraldSoft.withValues(alpha: 0.55)
           : Colors.transparent,
       child: InkWell(
         onTap: isSending ? null : onSelect,
-        hoverColor: QuickDropColors.surfaceMuted,
+        hoverColor: p.surfaceMuted,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
           child: Row(
@@ -38,18 +39,14 @@ class DeviceCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: selected
-                      ? QuickDropColors.emerald
-                      : QuickDropColors.surfaceSubtle,
+                  color: selected ? p.emerald : p.surfaceSubtle,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   peer.isDesktop
                       ? Icons.laptop_mac_rounded
                       : Icons.phone_android_rounded,
-                  color: selected
-                      ? Colors.white
-                      : QuickDropColors.textSecondary,
+                  color: selected ? p.onAccent : p.textSecondary,
                   size: 20,
                 ),
               ),
@@ -62,8 +59,8 @@ class DeviceCard extends StatelessWidget {
                       peer.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: QuickDropColors.textPrimary,
+                      style: TextStyle(
+                        color: p.textPrimary,
                         fontSize: 13.5,
                         height: 1.3,
                         fontWeight: FontWeight.w600,
@@ -77,8 +74,8 @@ class DeviceCard extends StatelessWidget {
                             '${peer.isDesktop ? 'Computer' : 'Phone'} · ${peer.address}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: QuickDropColors.textMuted,
+                            style: TextStyle(
+                              color: p.textMuted,
                               fontSize: 11.5,
                               height: 1.3,
                             ),
@@ -90,12 +87,12 @@ class DeviceCard extends StatelessWidget {
                         ],
                         if (peer.isManual) ...[
                           const SizedBox(width: 5),
-                          const Tooltip(
+                          Tooltip(
                             message: 'Added by IP address',
                             child: Icon(
                               Icons.link_rounded,
                               size: 12,
-                              color: QuickDropColors.textFaint,
+                              color: p.textFaint,
                             ),
                           ),
                         ],
@@ -115,15 +112,11 @@ class DeviceCard extends StatelessWidget {
                 Container(
                   width: 22,
                   height: 22,
-                  decoration: const BoxDecoration(
-                    color: QuickDropColors.emerald,
+                  decoration: BoxDecoration(
+                    color: p.emerald,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    size: 15,
-                    color: Colors.white,
-                  ),
+                  child: Icon(Icons.check_rounded, size: 15, color: p.onAccent),
                 )
               else
                 IconButton(
@@ -132,16 +125,16 @@ class DeviceCard extends StatelessWidget {
                   style: IconButton.styleFrom(
                     minimumSize: const Size(36, 36),
                     maximumSize: const Size(36, 36),
-                    backgroundColor: QuickDropColors.surfaceMuted,
-                    side: const BorderSide(color: QuickDropColors.border),
+                    backgroundColor: p.surfaceMuted,
+                    side: BorderSide(color: p.border),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(9),
                     ),
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_upward_rounded,
                     size: 17,
-                    color: QuickDropColors.textSecondary,
+                    color: p.textSecondary,
                   ),
                 ),
             ],

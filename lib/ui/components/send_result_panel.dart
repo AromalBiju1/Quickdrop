@@ -19,16 +19,16 @@ class SendResultPanel extends StatelessWidget {
   bool get _success => summary.allSent;
   bool get _canceled => summary.canceled && !summary.allSent;
 
-  Color get _accent {
-    if (_success) return QuickDropColors.emerald;
-    if (_canceled) return QuickDropColors.amber;
-    return QuickDropColors.rose;
+  Color _accent(QuickDropPalette p) {
+    if (_success) return p.emerald;
+    if (_canceled) return p.amber;
+    return p.rose;
   }
 
-  Color get _soft {
-    if (_success) return QuickDropColors.emeraldSoft;
-    if (_canceled) return QuickDropColors.amberSoft;
-    return QuickDropColors.roseSoft;
+  Color _soft(QuickDropPalette p) {
+    if (_success) return p.emeraldSoft;
+    if (_canceled) return p.amberSoft;
+    return p.roseSoft;
   }
 
   IconData get _icon {
@@ -45,7 +45,8 @@ class SendResultPanel extends StatelessWidget {
   }
 
   String get _subtitle {
-    final files = '${summary.sent} of ${summary.total} file${summary.total == 1 ? '' : 's'} delivered';
+    final files =
+        '${summary.sent} of ${summary.total} file${summary.total == 1 ? '' : 's'} delivered';
     return '$files  ·  ${summary.formattedTotalSize}  ·  ${FileUtils.formatDuration(summary.elapsed)}';
   }
 
@@ -53,12 +54,13 @@ class SendResultPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qd;
     return Container(
       decoration: BoxDecoration(
-        color: QuickDropColors.surface,
+        color: p.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: QuickDropColors.border),
-        boxShadow: QuickDropColors.cardShadow,
+        border: Border.all(color: p.border),
+        boxShadow: p.cardShadow,
       ),
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 22),
       child: Column(
@@ -69,7 +71,7 @@ class SendResultPanel extends StatelessWidget {
               width: 104,
               height: 104,
               decoration: BoxDecoration(
-                color: _soft,
+                color: _soft(p),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -77,10 +79,10 @@ class SendResultPanel extends StatelessWidget {
                   width: 66,
                   height: 66,
                   decoration: BoxDecoration(
-                    color: _accent,
+                    color: _accent(p),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(_icon, color: Colors.white, size: 34),
+                  child: Icon(_icon, color: p.onAccent, size: 34),
                 ),
               ),
             ),
@@ -89,8 +91,8 @@ class SendResultPanel extends StatelessWidget {
           Text(
             _headline,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: QuickDropColors.textPrimary,
+            style: TextStyle(
+              color: p.textPrimary,
               fontSize: 21,
               height: 1.3,
               fontWeight: FontWeight.w600,
@@ -101,8 +103,8 @@ class SendResultPanel extends StatelessWidget {
           Text(
             _subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: QuickDropColors.textSecondary,
+            style: TextStyle(
+              color: p.textSecondary,
               fontSize: 13,
               height: 1.45,
             ),
@@ -112,11 +114,9 @@ class SendResultPanel extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(11),
               decoration: BoxDecoration(
-                color: _soft,
+                color: _soft(p),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: _accent.withValues(alpha: 0.22),
-                ),
+                border: Border.all(color: _accent(p).withValues(alpha: 0.22)),
               ),
               child: Text(
                 summary.firstError?.trim().isNotEmpty == true
@@ -124,9 +124,7 @@ class SendResultPanel extends StatelessWidget {
                     : 'The other device may have gone offline. Files already delivered stay on disk.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: _accent == QuickDropColors.amber
-                      ? QuickDropColors.amber
-                      : QuickDropColors.roseDark,
+                  color: _accent(p) == p.amber ? p.amber : p.roseDark,
                   fontSize: 11.5,
                   height: 1.5,
                 ),
@@ -180,11 +178,12 @@ class _DetailsState extends State<_Details> {
   @override
   Widget build(BuildContext context) {
     final summary = widget.summary;
+    final p = context.qd;
     return Container(
       decoration: BoxDecoration(
-        color: QuickDropColors.surfaceMuted,
+        color: p.surfaceMuted,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: QuickDropColors.border),
+        border: Border.all(color: p.border),
       ),
       child: Column(
         children: [
@@ -195,17 +194,17 @@ class _DetailsState extends State<_Details> {
               padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.info_outline_rounded,
                     size: 17,
-                    color: QuickDropColors.emeraldDark,
+                    color: p.emeraldDark,
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'View details',
                       style: TextStyle(
-                        color: QuickDropColors.textPrimary,
+                        color: p.textPrimary,
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -214,10 +213,10 @@ class _DetailsState extends State<_Details> {
                   AnimatedRotation(
                     turns: _open ? 0.5 : 0,
                     duration: const Duration(milliseconds: 160),
-                    child: const Icon(
+                    child: Icon(
                       Icons.expand_more_rounded,
                       size: 19,
-                      color: QuickDropColors.textMuted,
+                      color: p.textMuted,
                     ),
                   ),
                 ],
@@ -230,17 +229,25 @@ class _DetailsState extends State<_Details> {
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Column(
                 children: [
-                  _row('Recipient', summary.peerName),
-                  _row('Files delivered', '${summary.sent} of ${summary.total}'),
-                  _row('Total size', summary.formattedTotalSize),
-                  _row('Duration', FileUtils.formatDuration(summary.elapsed)),
+                  _row('Recipient', summary.peerName, p),
+                  _row(
+                    'Files delivered',
+                    '${summary.sent} of ${summary.total}',
+                    p,
+                  ),
+                  _row('Total size', summary.formattedTotalSize, p),
+                  _row(
+                    'Duration',
+                    FileUtils.formatDuration(summary.elapsed),
+                    p,
+                  ),
                   const SizedBox(height: 10),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'FILES',
                       style: TextStyle(
-                        color: QuickDropColors.textMuted,
+                        color: p.textMuted,
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.8,
@@ -257,14 +264,14 @@ class _DetailsState extends State<_Details> {
                             file.success
                                 ? Icons.check_circle_rounded
                                 : file.error == 'Canceled'
-                                    ? Icons.remove_circle_outline_rounded
-                                    : Icons.error_outline_rounded,
+                                ? Icons.remove_circle_outline_rounded
+                                : Icons.error_outline_rounded,
                             size: 15,
                             color: file.success
-                                ? QuickDropColors.emeraldDark
+                                ? p.emeraldDark
                                 : file.error == 'Canceled'
-                                    ? QuickDropColors.textFaint
-                                    : QuickDropColors.rose,
+                                ? p.textFaint
+                                : p.rose,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -272,8 +279,8 @@ class _DetailsState extends State<_Details> {
                               file.fileName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: QuickDropColors.textPrimary,
+                              style: TextStyle(
+                                color: p.textPrimary,
                                 fontSize: 11.5,
                               ),
                             ),
@@ -281,8 +288,8 @@ class _DetailsState extends State<_Details> {
                           const SizedBox(width: 8),
                           Text(
                             file.formattedSize,
-                            style: const TextStyle(
-                              color: QuickDropColors.textFaint,
+                            style: TextStyle(
+                              color: p.textFaint,
                               fontSize: 10.5,
                             ),
                           ),
@@ -298,7 +305,7 @@ class _DetailsState extends State<_Details> {
     );
   }
 
-  Widget _row(String label, String value) {
+  Widget _row(String label, String value, QuickDropPalette p) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -306,16 +313,13 @@ class _DetailsState extends State<_Details> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: QuickDropColors.textMuted,
-                fontSize: 11.5,
-              ),
+              style: TextStyle(color: p.textMuted, fontSize: 11.5),
             ),
           ),
           Text(
             value,
-            style: const TextStyle(
-              color: QuickDropColors.textPrimary,
+            style: TextStyle(
+              color: p.textPrimary,
               fontSize: 11.5,
               fontWeight: FontWeight.w500,
             ),

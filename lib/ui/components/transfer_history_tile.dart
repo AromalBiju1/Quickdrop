@@ -17,6 +17,7 @@ class TransferHistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qd;
     // Android files live in public Downloads through MediaStore. A scoped
     // path may not be stat-able, but the content URI is still valid.
     final exists =
@@ -27,7 +28,7 @@ class TransferHistoryTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: exists ? () => _open(context) : null,
-        hoverColor: QuickDropColors.surfaceMuted,
+        hoverColor: p.surfaceMuted,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 11, 6, 11),
           child: Row(
@@ -46,9 +47,7 @@ class TransferHistoryTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: exists
-                            ? QuickDropColors.textPrimary
-                            : QuickDropColors.textMuted,
+                        color: exists ? p.textPrimary : p.textMuted,
                         fontSize: 12.5,
                         height: 1.3,
                         fontWeight: FontWeight.w500,
@@ -59,8 +58,8 @@ class TransferHistoryTile extends StatelessWidget {
                       '${item.isIncoming ? 'From' : 'To'} ${item.senderName}  ·  ${item.formattedSize}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: QuickDropColors.textMuted,
+                      style: TextStyle(
+                        color: p.textMuted,
                         fontSize: 11.5,
                         height: 1.3,
                       ),
@@ -75,18 +74,14 @@ class TransferHistoryTile extends StatelessWidget {
                   StatusPill(
                     label: item.success ? 'Complete' : 'Failed',
                     dot: false,
-                    foreground: item.success
-                        ? QuickDropColors.emeraldDark
-                        : QuickDropColors.roseDark,
-                    background: item.success
-                        ? QuickDropColors.emeraldSoft
-                        : QuickDropColors.roseSoft,
+                    foreground: item.success ? p.emeraldDark : p.roseDark,
+                    background: item.success ? p.emeraldSoft : p.roseSoft,
                   ),
                   const SizedBox(height: 3),
                   Text(
                     FileUtils.friendlyTime(item.timestamp),
-                    style: const TextStyle(
-                      color: QuickDropColors.textFaint,
+                    style: TextStyle(
+                      color: p.textFaint,
                       fontSize: 10.5,
                       height: 1.2,
                     ),
@@ -94,23 +89,23 @@ class TransferHistoryTile extends StatelessWidget {
                 ],
               ),
               if (!exists)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(left: 6),
                   child: Tooltip(
                     message: 'File was moved or deleted',
                     child: Icon(
                       Icons.link_off_rounded,
-                      color: QuickDropColors.textFaint,
+                      color: p.textFaint,
                       size: 15,
                     ),
                   ),
                 ),
               PopupMenuButton<String>(
                 tooltip: 'File actions',
-                icon: const Icon(
+                icon: Icon(
                   Icons.more_horiz_rounded,
                   size: 18,
-                  color: QuickDropColors.textMuted,
+                  color: p.textMuted,
                 ),
                 padding: EdgeInsets.zero,
                 onSelected: (value) => _action(context, value, exists),
@@ -253,9 +248,10 @@ class _MenuRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qd;
     return Row(
       children: [
-        Icon(icon, size: 16, color: QuickDropColors.textSecondary),
+        Icon(icon, size: 16, color: p.textSecondary),
         const SizedBox(width: 9),
         Text(label, style: const TextStyle(fontSize: 12.5)),
       ],

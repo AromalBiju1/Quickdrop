@@ -23,25 +23,26 @@ class SendPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qd;
     final files = controller.selectedFiles;
     final peer = controller.selectedPeer;
 
     return Container(
       decoration: BoxDecoration(
-        color: QuickDropColors.surface,
+        color: p.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: QuickDropColors.border),
-        boxShadow: QuickDropColors.cardShadow,
+        border: Border.all(color: p.border),
+        boxShadow: p.cardShadow,
       ),
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _header(files),
+          _header(files, p),
           const SizedBox(height: 16),
-          if (files.isEmpty) _dropZone(context) else _selection(files),
+          if (files.isEmpty) _dropZone(context) else _selection(files, p),
           const SizedBox(height: 18),
-          _sendButton(peer),
+          _sendButton(peer, p),
           if (peer == null) ...[
             const SizedBox(height: 10),
             Center(
@@ -49,12 +50,9 @@ class SendPanel extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 alignment: WrapAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'Select a nearby device first.',
-                    style: TextStyle(
-                      color: QuickDropColors.textMuted,
-                      fontSize: 11.5,
-                    ),
+                    style: TextStyle(color: p.textMuted, fontSize: 11.5),
                   ),
                   TextButton(
                     onPressed: onConnect,
@@ -74,31 +72,31 @@ class SendPanel extends StatelessWidget {
     );
   }
 
-  Widget _header(List<SelectedFile> files) {
+  Widget _header(List<SelectedFile> files, QuickDropPalette p) {
     return Row(
       children: [
         Container(
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: QuickDropColors.emeraldSoft,
+            color: p.emeraldSoft,
             borderRadius: BorderRadius.circular(9),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.upload_file_rounded,
-            color: QuickDropColors.emeraldDark,
+            color: p.emeraldDark,
             size: 19,
           ),
         ),
         const SizedBox(width: 11),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Send files',
                 style: TextStyle(
-                  color: QuickDropColors.textPrimary,
+                  color: p.textPrimary,
                   fontSize: 15,
                   height: 1.3,
                   fontWeight: FontWeight.w600,
@@ -109,7 +107,7 @@ class SendPanel extends StatelessWidget {
               Text(
                 'Any file type. Multiple files welcome.',
                 style: TextStyle(
-                  color: QuickDropColors.textMuted,
+                  color: p.textMuted,
                   fontSize: 11.5,
                   height: 1.3,
                 ),
@@ -121,7 +119,7 @@ class SendPanel extends StatelessWidget {
           TextButton(
             onPressed: controller.clearSelection,
             style: TextButton.styleFrom(
-              foregroundColor: QuickDropColors.textMuted,
+              foregroundColor: p.textMuted,
               textStyle: const TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w500,
@@ -136,11 +134,9 @@ class SendPanel extends StatelessWidget {
   }
 
   Widget _dropZone(BuildContext context) {
+    final p = context.qd;
     return CustomPaint(
-      painter: _DashedBorderPainter(
-        color: QuickDropColors.borderStrong,
-        radius: 14,
-      ),
+      painter: _DashedBorderPainter(color: p.borderStrong, radius: 14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onPickFiles,
@@ -148,7 +144,7 @@ class SendPanel extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 26),
           decoration: BoxDecoration(
-            color: QuickDropColors.surfaceMuted,
+            color: p.surfaceMuted,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
@@ -156,33 +152,26 @@ class SendPanel extends StatelessWidget {
               Container(
                 width: 44,
                 height: 44,
-                decoration: const BoxDecoration(
-                  color: QuickDropColors.surface,
+                decoration: BoxDecoration(
+                  color: p.surface,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.add_rounded,
-                  color: QuickDropColors.emeraldDark,
-                  size: 22,
-                ),
+                child: Icon(Icons.add_rounded, color: p.emeraldDark, size: 22),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Drop files here',
                 style: TextStyle(
-                  color: QuickDropColors.textPrimary,
+                  color: p.textPrimary,
                   fontSize: 14,
                   height: 1.3,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 3),
-              const Text(
+              Text(
                 'or choose something from this device',
-                style: TextStyle(
-                  color: QuickDropColors.textMuted,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: p.textMuted, fontSize: 12),
               ),
               const SizedBox(height: 16),
               Wrap(
@@ -225,7 +214,7 @@ class SendPanel extends StatelessWidget {
     );
   }
 
-  Widget _selection(List<SelectedFile> files) {
+  Widget _selection(List<SelectedFile> files, QuickDropPalette p) {
     final visible = files.take(6).toList();
     final hidden = files.length - visible.length;
 
@@ -234,35 +223,27 @@ class SendPanel extends StatelessWidget {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: QuickDropColors.surface,
+            color: p.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: QuickDropColors.border),
+            border: Border.all(color: p.border),
           ),
           child: Column(
             children: [
               for (var i = 0; i < visible.length; i++) ...[
                 if (i > 0)
-                  const Divider(
-                    height: 1,
-                    indent: 62,
-                    color: QuickDropColors.surfaceSubtle,
-                  ),
-                _fileRow(visible[i]),
+                  Divider(height: 1, indent: 62, color: p.surfaceSubtle),
+                _fileRow(visible[i], p),
               ],
               if (hidden > 0) ...[
-                const Divider(
-                  height: 1,
-                  indent: 62,
-                  color: QuickDropColors.surfaceSubtle,
-                ),
+                Divider(height: 1, indent: 62, color: p.surfaceSubtle),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(62, 10, 14, 10),
                   child: Row(
                     children: [
                       Text(
                         '+$hidden more file${hidden == 1 ? '' : 's'}',
-                        style: const TextStyle(
-                          color: QuickDropColors.textMuted,
+                        style: TextStyle(
+                          color: p.textMuted,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w500,
                         ),
@@ -280,8 +261,8 @@ class SendPanel extends StatelessWidget {
             Expanded(
               child: Text(
                 '${files.length} file${files.length == 1 ? '' : 's'} · ${controller.totalSelectedSize}',
-                style: const TextStyle(
-                  color: QuickDropColors.textSecondary,
+                style: TextStyle(
+                  color: p.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -303,7 +284,7 @@ class SendPanel extends StatelessWidget {
     );
   }
 
-  Widget _fileRow(SelectedFile file) {
+  Widget _fileRow(SelectedFile file, QuickDropPalette p) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 9, 6, 9),
       child: Row(
@@ -318,8 +299,8 @@ class SendPanel extends StatelessWidget {
                   file.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: QuickDropColors.textPrimary,
+                  style: TextStyle(
+                    color: p.textPrimary,
                     fontSize: 12.5,
                     height: 1.3,
                     fontWeight: FontWeight.w500,
@@ -328,10 +309,7 @@ class SendPanel extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   file.formattedSize,
-                  style: const TextStyle(
-                    color: QuickDropColors.textMuted,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: p.textMuted, fontSize: 11),
                 ),
               ],
             ),
@@ -343,18 +321,14 @@ class SendPanel extends StatelessWidget {
               minimumSize: const Size(32, 32),
               maximumSize: const Size(32, 32),
             ),
-            icon: const Icon(
-              Icons.close_rounded,
-              size: 16,
-              color: QuickDropColors.textFaint,
-            ),
+            icon: Icon(Icons.close_rounded, size: 16, color: p.textFaint),
           ),
         ],
       ),
     );
   }
 
-  Widget _sendButton(DevicePeer? peer) {
+  Widget _sendButton(DevicePeer? peer, QuickDropPalette p) {
     final canSend =
         controller.hasSelection && peer != null && !controller.isSending;
     final count = controller.selectedFiles.length;
@@ -371,20 +345,11 @@ class SendPanel extends StatelessWidget {
     return FilledButton.icon(
       onPressed: canSend ? onSend : null,
       icon: const Icon(Icons.arrow_upward_rounded, size: 19),
-      label: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(52),
-        textStyle: const TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w600,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
