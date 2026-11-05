@@ -6,48 +6,134 @@ import 'package:flutter/services.dart';
 import '../../core/file_utils.dart';
 import '../../core/platform_integrations.dart';
 import '../../models/device_peer.dart';
+import '../quickdrop_motion.dart';
 import '../quickdrop_theme.dart';
 import 'file_thumb.dart';
 import 'top_notice.dart';
 
-class TransferHistoryTile extends StatelessWidget {
+class TransferHistoryTile extends StatefulWidget {
   final TransferItem item;
+  final bool animate;
+  final VoidCallback? onAnimated;
 
-  const TransferHistoryTile({super.key, required this.item});
+  const TransferHistoryTile({
+    super.key,
+    required this.item,
+    this.animate = false,
+    this.onAnimated,
+  });
+
+  @override
+  State<TransferHistoryTile> createState() => _TransferHistoryTileState();
+}
+
+class _TransferHistoryTileState extends State<TransferHistoryTile> {
+  late bool _animate = widget.animate;
+
+  TransferItem get item => widget.item;
+
+  String get _title {
+    if (item.kind != TransferKind.text) return item.fileName;
+    final preview = item.preview?.trim();
+    if (preview == null || preview.isEmpty) return 'Text snippet';
+    final firstLine = preview.split('\n').first.trim();
+    return firstLine.isEmpty ? 'Text snippet' : firstLine;
+  }
+
+  void _finishEntry() {
+    if (!mounted || !_animate) return;
+    setState(() => _animate = false);
+    widget.onAnimated?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final tile = _buildTile(context);
+    if (!_animate) return tile;
+
+    final duration = QuickDropMotion.duration(
+      context,
+      const Duration(milliseconds: 220),
+    );
+    if (duration == Duration.zero) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _finishEntry());
+      return tile;
+    }
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      onEnd: _finishEntry,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: ClipRect(
+            child: Align(
+              alignment: Alignment.topCenter,
+              heightFactor: value,
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: tile,
+    );
+  }
+
+  Widget _buildTile(BuildContext context) {
     final p = context.qd;
     // Android files live in public Downloads through MediaStore. A scoped
     // path may not be stat-able, but the content URI is still valid.
-    final exists =
+    final hasFile =
         (item.contentUri?.isNotEmpty ?? false) ||
         (item.filePath.isNotEmpty && File(item.filePath).existsSync());
+    final kindLabel = item.isText ? 'Text' : item.formattedSize;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: exists ? () => _open(context) : null,
+        onTap: hasFile ? () => _open(context) : null,
         hoverColor: p.surfaceMuted,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 11, 6, 11),
           child: Row(
             children: [
-              Opacity(
-                opacity: exists ? 1 : 0.45,
-                child: FileThumb(path: item.filePath, size: 40, radius: 10),
-              ),
+              item.isText
+                  ? Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: p.emeraldSoft,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.notes_rounded,
+                        color: p.emeraldDark,
+                        size: 19,
+                      ),
+                    )
+                  : Opacity(
+                      opacity: hasFile ? 1 : 0.45,
+                      child: FileThumb(
+                        path: item.filePath,
+                        size: 40,
+                        radius: 10,
+                      ),
+                    ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.fileName,
+                      _title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: exists ? p.textPrimary : p.textMuted,
+                        color: hasFile || item.isText
+                            ? p.textPrimary
+                            : p.textMuted,
                         fontSize: 12.5,
                         height: 1.3,
                         fontWeight: FontWeight.w500,
@@ -55,7 +141,7 @@ class TransferHistoryTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${item.isIncoming ? 'From' : 'To'} ${item.senderName}  ·  ${item.formattedSize}',
+                      '${item.isIncoming ? 'From' : 'To'} ${item.senderName}  ·  $kindLabel',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -88,9 +174,9 @@ class TransferHistoryTile extends StatelessWidget {
                   ),
                 ],
               ),
-              if (!exists)
+              if (!item.isText && !hasFile)
                 Padding(
-                  padding: EdgeInsets.only(left: 6),
+                  padding: const EdgeInsets.only(left: 6),
                   child: Tooltip(
                     message: 'File was moved or deleted',
                     child: Icon(
@@ -108,16 +194,25 @@ class TransferHistoryTile extends StatelessWidget {
                   color: p.textMuted,
                 ),
                 padding: EdgeInsets.zero,
-                onSelected: (value) => _action(context, value, exists),
+                onSelected: (value) => _action(context, value),
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'copy_path',
-                    child: _MenuRow(
-                      icon: Icons.link_rounded,
-                      label: 'Copy file path',
+                  if (item.isText)
+                    const PopupMenuItem(
+                      value: 'copy_text',
+                      child: _MenuRow(
+                        icon: Icons.content_copy_rounded,
+                        label: 'Copy text',
+                      ),
                     ),
-                  ),
-                  if (exists)
+                  if (item.filePath.isNotEmpty)
+                    const PopupMenuItem(
+                      value: 'copy_path',
+                      child: _MenuRow(
+                        icon: Icons.link_rounded,
+                        label: 'Copy file path',
+                      ),
+                    ),
+                  if (hasFile)
                     const PopupMenuItem(
                       value: 'open',
                       child: _MenuRow(
@@ -125,7 +220,7 @@ class TransferHistoryTile extends StatelessWidget {
                         label: 'Open file',
                       ),
                     ),
-                  if (exists)
+                  if (hasFile)
                     PopupMenuItem(
                       value: 'folder',
                       child: _MenuRow(
@@ -135,7 +230,8 @@ class TransferHistoryTile extends StatelessWidget {
                             : 'Show in folder',
                       ),
                     ),
-                  if (exists &&
+                  if (!item.isText &&
+                      hasFile &&
                       (Platform.isLinux || Platform.isWindows) &&
                       item.isImage)
                     const PopupMenuItem(
@@ -154,8 +250,34 @@ class TransferHistoryTile extends StatelessWidget {
     );
   }
 
-  Future<void> _action(BuildContext context, String value, bool exists) async {
+  Future<void> _action(BuildContext context, String value) async {
     switch (value) {
+      case 'copy_text':
+        var text = item.preview ?? '';
+        if (item.filePath.isNotEmpty && File(item.filePath).existsSync()) {
+          try {
+            text = File(item.filePath).readAsStringSync();
+          } catch (_) {}
+        }
+        if (text.trim().isEmpty) {
+          if (context.mounted) {
+            _notify(
+              context,
+              'Text is no longer available',
+              tone: TopNoticeTone.error,
+            );
+          }
+          return;
+        }
+        final ok = await PlatformIntegrations.copyTextToClipboard(text);
+        if (context.mounted) {
+          _notify(
+            context,
+            ok ? 'Text copied to clipboard' : 'Could not copy text',
+            tone: ok ? TopNoticeTone.success : TopNoticeTone.error,
+          );
+        }
+        return;
       case 'copy_path':
         await Clipboard.setData(ClipboardData(text: item.filePath));
         if (context.mounted) {

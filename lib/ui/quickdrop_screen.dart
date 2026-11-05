@@ -56,6 +56,8 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
   SendSummary? _lastSummary;
   final Set<String> _seenIncomingIds = {};
   final Map<String, TransferItem> _pendingIncoming = {};
+  final Set<String> _initialHistoryIds = {};
+  final Set<String> _animatedHistoryIds = {};
   Timer? _receiveNoticeTimer;
 
   @override
@@ -71,6 +73,9 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
       widget.transferServer.historyNotifier.value
           .where((item) => item.isIncoming && item.success)
           .map((item) => item.id),
+    );
+    _initialHistoryIds.addAll(
+      widget.transferServer.historyNotifier.value.map((item) => item.id),
     );
     widget.transferServer.historyNotifier.addListener(_onHistoryChanged);
   }
@@ -1300,7 +1305,14 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
                     indent: 66,
                     color: context.qd.surfaceSubtle,
                   ),
-                TransferHistoryTile(item: group.items[i]),
+                TransferHistoryTile(
+                  key: ValueKey(group.items[i].id),
+                  item: group.items[i],
+                  animate:
+                      !_initialHistoryIds.contains(group.items[i].id) &&
+                      !_animatedHistoryIds.contains(group.items[i].id),
+                  onAnimated: () => _animatedHistoryIds.add(group.items[i].id),
+                ),
               ],
             ],
           ),
