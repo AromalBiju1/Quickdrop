@@ -23,6 +23,7 @@ import 'components/receive_card.dart';
 import 'components/send_panel.dart';
 import 'components/send_result_panel.dart';
 import 'components/settings_dialog.dart';
+import 'components/text_composer_sheet.dart';
 import 'components/top_notice.dart';
 import 'components/transfer_history_tile.dart';
 import 'quickdrop_theme.dart';
@@ -190,6 +191,17 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
       icon: result.success ? Icons.link_rounded : Icons.error_outline_rounded,
       tone: result.success ? TopNoticeTone.success : TopNoticeTone.error,
     );
+  }
+
+  Future<void> _openTextComposer() async {
+    final sent = await TextComposerSheet.show(context, _controller);
+    if (sent == true && mounted) {
+      _notify(
+        'Text sent to ${_controller.selectedPeer?.name ?? 'device'}',
+        icon: Icons.notes_rounded,
+        tone: TopNoticeTone.success,
+      );
+    }
   }
 
   Future<void> _openSettings() async {
@@ -745,6 +757,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
       onPickImages: () => _pickFiles(imagesOnly: true),
       onConnect: _openManualConnect,
       onSend: _sendSelected,
+      onText: _openTextComposer,
     );
     final devices = _buildDevicesSection(peers);
 

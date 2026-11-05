@@ -11,6 +11,7 @@ class SendPanel extends StatelessWidget {
   final VoidCallback onPickImages;
   final VoidCallback onConnect;
   final VoidCallback onSend;
+  final VoidCallback onText;
 
   const SendPanel({
     super.key,
@@ -19,6 +20,7 @@ class SendPanel extends StatelessWidget {
     required this.onPickImages,
     required this.onConnect,
     required this.onSend,
+    required this.onText,
   });
 
   @override
@@ -105,7 +107,7 @@ class SendPanel extends StatelessWidget {
               ),
               SizedBox(height: 2),
               Text(
-                'Any file type. Multiple files welcome.',
+                'Files or text. Multiple files welcome.',
                 style: TextStyle(
                   color: p.textMuted,
                   fontSize: 11.5,
@@ -205,6 +207,19 @@ class SendPanel extends StatelessWidget {
                       ),
                     ),
                   ),
+                  OutlinedButton.icon(
+                    onPressed: onText,
+                    icon: const Icon(Icons.notes_rounded, size: 16),
+                    label: const Text('Text'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 42),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      textStyle: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -266,6 +281,16 @@ class SendPanel extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: onText,
+              icon: const Icon(Icons.notes_rounded, size: 14),
+              label: const Text('Text'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                textStyle: const TextStyle(fontSize: 11.5),
               ),
             ),
             TextButton.icon(

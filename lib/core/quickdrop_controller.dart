@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -9,6 +10,7 @@ import 'app_store.dart';
 import 'discovery_service.dart';
 import 'file_utils.dart';
 import 'share_receiver.dart';
+import 'text_transfer.dart';
 import 'transfer_client.dart';
 import 'transfer_server.dart';
 
@@ -141,7 +143,9 @@ class QuickDropController extends ChangeNotifier {
     server.isRunningNotifier.addListener(notifyListeners);
     ShareReceiver.sharedFilesNotifier.addListener(_onSharedFilesChanged);
     if (ShareReceiver.sharedFilesNotifier.value.isNotEmpty) {
-      unawaited(addPaths(ShareReceiver.sharedFilesNotifier.value, fromShare: true));
+      unawaited(
+        addPaths(ShareReceiver.sharedFilesNotifier.value, fromShare: true),
+      );
     }
   }
 
@@ -220,12 +224,14 @@ class QuickDropController extends ChangeNotifier {
           continue;
         }
         final size = await file.length();
-        _selected.add(SelectedFile(
-          path: path,
-          name: FileUtils.fileName(path),
-          size: size,
-          fromShare: fromShare,
-        ));
+        _selected.add(
+          SelectedFile(
+            path: path,
+            name: FileUtils.fileName(path),
+            size: size,
+            fromShare: fromShare,
+          ),
+        );
         _selectedPaths.add(path);
         added++;
       } catch (_) {
@@ -343,8 +349,7 @@ class QuickDropController extends ChangeNotifier {
             sentBytes: completedBytes + sentBytes,
             totalBytes: totalBytes,
             bytesPerSecond: elapsed.inMilliseconds > 0
-                ? (completedBytes + sentBytes) /
-                    (elapsed.inMilliseconds / 1000)
+                ? (completedBytes + sentBytes) / (elapsed.inMilliseconds / 1000)
                 : 0,
             elapsed: elapsed,
           );
@@ -362,56 +367,66 @@ class QuickDropController extends ChangeNotifier {
 
       if (result.canceled) {
         canceled = true;
-        results.add(SendFileResult(
-          fileName: file.name,
-          fileSize: file.size,
-          success: false,
-          error: 'Canceled',
-        ));
+        results.add(
+          SendFileResult(
+            fileName: file.name,
+            fileSize: file.size,
+            success: false,
+            error: 'Canceled',
+          ),
+        );
         break;
       }
 
       if (result.success) {
         sent++;
-        results.add(SendFileResult(
-          fileName: file.name,
-          fileSize: file.size,
-          success: true,
-        ));
+        results.add(
+          SendFileResult(
+            fileName: file.name,
+            fileSize: file.size,
+            success: true,
+          ),
+        );
         _selected.removeWhere((item) => item.path == file.path);
         _selectedPaths.remove(file.path);
-        server.addOutgoingHistory(TransferItem(
-          id: 'tx_${DateTime.now().microsecondsSinceEpoch}',
-          fileName: file.name,
-          fileSize: file.size,
-          filePath: file.path,
-          senderName: peer.name,
-          isIncoming: false,
-          timestamp: DateTime.now(),
-          success: true,
-          batchId: batchId,
-        ));
+        server.addOutgoingHistory(
+          TransferItem(
+            id: 'tx_${DateTime.now().microsecondsSinceEpoch}',
+            fileName: file.name,
+            fileSize: file.size,
+            filePath: file.path,
+            senderName: peer.name,
+            isIncoming: false,
+            timestamp: DateTime.now(),
+            success: true,
+            batchId: batchId,
+          ),
+        );
       } else {
         failed++;
         firstError ??= result.message;
-        results.add(SendFileResult(
-          fileName: file.name,
-          fileSize: file.size,
-          success: false,
-          error: result.message,
-        ));
+        results.add(
+          SendFileResult(
+            fileName: file.name,
+            fileSize: file.size,
+            success: false,
+            error: result.message,
+          ),
+        );
       }
     }
 
     if (canceled && results.length < files.length) {
       for (var index = results.length; index < files.length; index++) {
         final file = files[index];
-        results.add(SendFileResult(
-          fileName: file.name,
-          fileSize: file.size,
-          success: false,
-          error: 'Canceled',
-        ));
+        results.add(
+          SendFileResult(
+            fileName: file.name,
+            fileSize: file.size,
+            success: false,
+            error: 'Canceled',
+          ),
+        );
       }
     }
 
@@ -436,6 +451,34 @@ class QuickDropController extends ChangeNotifier {
     _lastNotify = DateTime.fromMillisecondsSinceEpoch(0);
     summaryNotifier.value = summary;
     notifyListeners();
+  }
+
+  Future<TransferResult> sendTextToPeer(DevicePeer peer, String text) async {
+    final result = await TransferClient.sendText(
+      targetPeer: peer,
+      text: text,
+      senderName: settings.deviceName,
+    );
+
+    if (result.success) {
+      server.addOutgoingHistory(
+        TransferItem(
+          id: 'tx_${DateTime.now().microsecondsSinceEpoch}',
+          fileName: TextTransfer.fileName(),
+          fileSize: utf8.encode(text).length,
+          filePath: '',
+          senderName: peer.name,
+          isIncoming: false,
+          timestamp: DateTime.now(),
+          success: true,
+          kind: TransferKind.text,
+          preview: TextTransfer.preview(text),
+        ),
+      );
+      notifyListeners();
+    }
+
+    return result;
   }
 
   void cancelTransfer() {
