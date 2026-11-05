@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../quickdrop_motion.dart';
 import '../quickdrop_theme.dart';
 
 /// The visual weight of a top notice.
@@ -138,7 +139,10 @@ class TopNoticeHost extends StatelessWidget {
                 child: IgnorePointer(
                   ignoring: notice == null,
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
+                    duration: QuickDropMotion.duration(
+                      context,
+                      const Duration(milliseconds: 220),
+                    ),
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
                     transitionBuilder: (child, animation) {

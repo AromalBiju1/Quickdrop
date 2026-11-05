@@ -65,4 +65,31 @@ void main() {
     final context = tester.element(find.text('QuickDrop'));
     expect(Theme.of(context).brightness, Brightness.dark);
   });
+
+  testWidgets('tabs switch and render the selected content', (tester) async {
+    final discovery = DiscoveryService(
+      deviceId: 'test_dev',
+      deviceName: 'Test Device',
+    );
+    final server = TransferServer(
+      deviceName: 'Test Device',
+      deviceId: discovery.deviceId,
+      enablePersistence: false,
+    );
+
+    await tester.pumpWidget(
+      QuickDropApp(
+        discoveryService: discovery,
+        transferServer: server,
+        settings: AppSettings.defaults(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Receive'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No Wi-Fi?'), findsOneWidget);
+    expect(find.text('Send files'), findsNothing);
+  });
 }

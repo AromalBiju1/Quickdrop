@@ -26,6 +26,7 @@ import 'components/settings_dialog.dart';
 import 'components/text_composer_sheet.dart';
 import 'components/top_notice.dart';
 import 'components/transfer_history_tile.dart';
+import 'quickdrop_motion.dart';
 import 'quickdrop_theme.dart';
 import 'transfer_notices.dart';
 
@@ -465,7 +466,46 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
                           child: Center(
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 1120),
-                              child: _buildTabContent(twoColumn),
+                              child: AnimatedSwitcher(
+                                duration: QuickDropMotion.duration(
+                                  context,
+                                  const Duration(milliseconds: 180),
+                                ),
+                                switchInCurve: Curves.easeOutCubic,
+                                switchOutCurve: Curves.easeInCubic,
+                                layoutBuilder:
+                                    (currentChild, previousChildren) {
+                                      return Stack(
+                                        alignment: Alignment.topCenter,
+                                        children: [
+                                          ...previousChildren,
+                                          ?currentChild,
+                                        ],
+                                      );
+                                    },
+                                transitionBuilder: (child, animation) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: AnimatedBuilder(
+                                      animation: animation,
+                                      child: child,
+                                      builder: (context, child) {
+                                        return Transform.translate(
+                                          offset: Offset(
+                                            0,
+                                            6 * (1 - animation.value),
+                                          ),
+                                          child: child,
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: KeyedSubtree(
+                                  key: ValueKey(_tab),
+                                  child: _buildTabContent(twoColumn),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -587,8 +627,11 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
               borderRadius: BorderRadius.circular(8),
               onTap: () => _selectTab(i),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                curve: Curves.easeOut,
+                duration: QuickDropMotion.duration(
+                  context,
+                  const Duration(milliseconds: 180),
+                ),
+                curve: Curves.easeOutCubic,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 7,
@@ -706,6 +749,18 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
   }
 
   Widget _buildSendTab(bool twoColumn) {
+    return AnimatedSize(
+      duration: QuickDropMotion.duration(
+        context,
+        const Duration(milliseconds: 200),
+      ),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: _buildSendTabContent(twoColumn),
+    );
+  }
+
+  Widget _buildSendTabContent(bool twoColumn) {
     final peers = _controller.discovery.peersNotifier.value;
 
     if (_controller.isSending && _controller.progress != null) {
@@ -830,38 +885,45 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        if (peers.isEmpty)
-          _buildEmptyDevices(scanning)
-        else
-          Container(
-            decoration: BoxDecoration(
-              color: context.qd.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.qd.border),
-              boxShadow: context.qd.cardShadow,
-            ),
-            child: Column(
-              children: [
-                for (var i = 0; i < peers.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      indent: 66,
-                      color: context.qd.surfaceSubtle,
-                    ),
-                  DeviceCard(
-                    peer: peers[i],
-                    selected:
-                        _controller.hasSelection &&
-                        _controller.selectedPeer?.id == peers[i].id,
-                    isSending: _controller.sendingPeerId == peers[i].id,
-                    onSelect: () => _controller.selectPeer(peers[i]),
-                    onSend: () => _sendToPeer(peers[i]),
-                  ),
-                ],
-              ],
-            ),
+        AnimatedSize(
+          duration: QuickDropMotion.duration(
+            context,
+            const Duration(milliseconds: 200),
           ),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: peers.isEmpty
+              ? _buildEmptyDevices(scanning)
+              : Container(
+                  decoration: BoxDecoration(
+                    color: context.qd.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: context.qd.border),
+                    boxShadow: context.qd.cardShadow,
+                  ),
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < peers.length; i++) ...[
+                        if (i > 0)
+                          Divider(
+                            height: 1,
+                            indent: 66,
+                            color: context.qd.surfaceSubtle,
+                          ),
+                        DeviceCard(
+                          peer: peers[i],
+                          selected:
+                              _controller.hasSelection &&
+                              _controller.selectedPeer?.id == peers[i].id,
+                          isSending: _controller.sendingPeerId == peers[i].id,
+                          onSelect: () => _controller.selectPeer(peers[i]),
+                          onSend: () => _sendToPeer(peers[i]),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+        ),
         if (peers.isNotEmpty && scanning)
           Padding(
             padding: const EdgeInsets.only(top: 9, left: 2),
@@ -1201,13 +1263,34 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
                 const SizedBox(height: 18),
                 _buildFilterBar(),
                 const SizedBox(height: 22),
-                if (filtered.isEmpty)
-                  _buildEmptyHistory()
-                else
-                  for (var i = 0; i < groups.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 22),
-                    _buildHistoryGroup(groups[i]),
-                  ],
+                AnimatedSwitcher(
+                  duration: QuickDropMotion.duration(
+                    context,
+                    const Duration(milliseconds: 180),
+                  ),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  layoutBuilder: (currentChild, previousChildren) {
+                    return Stack(
+                      alignment: Alignment.topCenter,
+                      children: [...previousChildren, ?currentChild],
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey(_historyFilter),
+                    child: filtered.isEmpty
+                        ? _buildEmptyHistory()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (var i = 0; i < groups.length; i++) ...[
+                                if (i > 0) const SizedBox(height: 22),
+                                _buildHistoryGroup(groups[i]),
+                              ],
+                            ],
+                          ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1235,8 +1318,11 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
                   borderRadius: BorderRadius.circular(8),
                   onTap: () => setState(() => _historyFilter = i),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    curve: Curves.easeOut,
+                    duration: QuickDropMotion.duration(
+                      context,
+                      const Duration(milliseconds: 180),
+                    ),
+                    curve: Curves.easeOutCubic,
                     height: 34,
                     decoration: BoxDecoration(
                       color: _historyFilter == i

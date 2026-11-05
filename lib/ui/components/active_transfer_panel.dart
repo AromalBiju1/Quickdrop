@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/file_utils.dart';
 import '../../core/quickdrop_controller.dart';
 import '../../models/link.dart';
+import '../quickdrop_motion.dart';
 import '../quickdrop_theme.dart';
 import 'file_thumb.dart';
 
@@ -66,38 +67,48 @@ class ActiveTransferPanel extends StatelessWidget {
             child: SizedBox(
               width: 212,
               height: 212,
-              child: CustomPaint(
-                painter: _ProgressRingPainter(
-                  progress.overallProgress,
-                  trackColor: p.surfaceSubtle,
-                  arcColor: p.emerald,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: progress.overallProgress),
+                duration: QuickDropMotion.duration(
+                  context,
+                  const Duration(milliseconds: 240),
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${progress.percent}%',
-                        style: TextStyle(
-                          color: p.textPrimary,
-                          fontSize: 44,
-                          height: 1,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1.8,
-                        ),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, _) {
+                  return CustomPaint(
+                    painter: _ProgressRingPainter(
+                      value,
+                      trackColor: context.qd.surfaceSubtle,
+                      arcColor: context.qd.emerald,
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${(value * 100).round().clamp(0, 100)}%',
+                            style: TextStyle(
+                              color: p.textPrimary,
+                              fontSize: 44,
+                              height: 1,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -1.8,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${FileUtils.formatBytes(progress.sentBytes)} of ${FileUtils.formatBytes(progress.totalBytes)}',
+                            style: TextStyle(
+                              color: p.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${FileUtils.formatBytes(progress.sentBytes)} of ${FileUtils.formatBytes(progress.totalBytes)}',
-                        style: TextStyle(
-                          color: p.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -143,7 +154,7 @@ class ActiveTransferPanel extends StatelessWidget {
                 for (var i = 0; i < visible.length; i++) ...[
                   if (i > 0)
                     Divider(height: 1, indent: 64, color: p.surfaceSubtle),
-                  _queueRow(visible[i], i, progress, p),
+                  _queueRow(context, visible[i], i, progress, p),
                 ],
                 if (hidden > 0) ...[
                   Divider(height: 1, indent: 64, color: p.surfaceSubtle),
@@ -194,6 +205,7 @@ class ActiveTransferPanel extends StatelessWidget {
   }
 
   Widget _queueRow(
+    BuildContext context,
     SelectedFile file,
     int index,
     SendProgress progress,
@@ -289,10 +301,23 @@ class ActiveTransferPanel extends StatelessWidget {
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: progress.fileProgress.clamp(0.0, 1.0),
-                minHeight: 4,
-                backgroundColor: p.surfaceSubtle,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(
+                  begin: 0,
+                  end: progress.fileProgress.clamp(0.0, 1.0),
+                ),
+                duration: QuickDropMotion.duration(
+                  context,
+                  const Duration(milliseconds: 200),
+                ),
+                curve: Curves.easeOut,
+                builder: (context, value, _) {
+                  return LinearProgressIndicator(
+                    value: value,
+                    minHeight: 4,
+                    backgroundColor: context.qd.surfaceSubtle,
+                  );
+                },
               ),
             ),
           ],
