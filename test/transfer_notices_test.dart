@@ -17,6 +17,21 @@ TransferItem _item(String name, {String sender = 'Laptop', String? id}) {
   );
 }
 
+TransferItem _textItem(String preview, {String sender = 'Pixel'}) {
+  return TransferItem(
+    id: 'rx_text_$preview',
+    fileName: 'QuickDrop-text-test.txt',
+    fileSize: 12,
+    filePath: '/tmp/QuickDrop-text-test.txt',
+    senderName: sender,
+    isIncoming: true,
+    timestamp: DateTime(2026, 11, 5),
+    success: true,
+    kind: TransferKind.text,
+    preview: preview,
+  );
+}
+
 SendSummary _summary({
   int sent = 1,
   int failed = 0,
@@ -60,6 +75,29 @@ void main() {
     expect(notice.actionLabel, 'View');
   });
 
+  test('single received text notice shows the snippet', () {
+    final notice = buildReceiveNotice([
+      _textItem('https://example.com/some/link'),
+    ]);
+    expect(notice.message, 'Text received');
+    expect(notice.detail, contains('https://example.com/some/link'));
+    expect(notice.detail, contains('Pixel'));
+  });
+
+  test('a batch of texts uses text wording', () {
+    final notice = buildReceiveNotice([
+      _textItem('one'),
+      _textItem('two', sender: 'Pixel'),
+    ]);
+    expect(notice.message, '2 texts received');
+    expect(notice.detail, 'from Pixel');
+  });
+
+  test('mixed batches use item wording', () {
+    final notice = buildReceiveNotice([_item('photo.png'), _textItem('hello')]);
+    expect(notice.message, '2 items received');
+  });
+
   test('successful send notice summarizes the transfer', () {
     final notice = buildSendNotice(_summary(sent: 3, total: 3));
 
@@ -70,11 +108,7 @@ void main() {
   });
 
   test('canceled send notice reports partial delivery', () {
-    final notice = buildSendNotice(_summary(
-      sent: 2,
-      total: 4,
-      canceled: true,
-    ));
+    final notice = buildSendNotice(_summary(sent: 2, total: 4, canceled: true));
 
     expect(notice.message, 'Transfer canceled');
     expect(notice.detail, '2 of 4 files sent to Pixel');
@@ -82,12 +116,9 @@ void main() {
   });
 
   test('failed send notice surfaces the first error', () {
-    final notice = buildSendNotice(_summary(
-      sent: 1,
-      failed: 2,
-      total: 3,
-      firstError: 'Connection reset',
-    ));
+    final notice = buildSendNotice(
+      _summary(sent: 1, failed: 2, total: 3, firstError: 'Connection reset'),
+    );
 
     expect(notice.message, 'Sent 1 of 3 files');
     expect(notice.detail, 'Connection reset');
