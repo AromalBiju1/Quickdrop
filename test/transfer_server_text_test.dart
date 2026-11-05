@@ -127,4 +127,19 @@ void main() {
     final item = server.historyNotifier.value.single;
     expect(File(item.filePath).existsSync(), isTrue);
   });
+
+  test('browser receiver exposes a text composer', () async {
+    final server = await _start(copyText: (_) async => true);
+    final client = HttpClient();
+    addTearDown(() => client.close(force: true));
+    final request = await client.getUrl(
+      Uri.parse('http://127.0.0.1:${server.boundPort}/web'),
+    );
+    final response = await request.close();
+    expect(response.statusCode, HttpStatus.ok);
+    final html = await utf8.decodeStream(response);
+    expect(html, contains('id="textInput"'));
+    expect(html, contains('X-Text-Snippet'));
+    expect(html, contains('Send text'));
+  });
 }

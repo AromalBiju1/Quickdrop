@@ -672,6 +672,29 @@ class TransferServer {
   .tip { margin-top: 18px; color: var(--muted); font-size: 12px; line-height: 1.6; text-align: center; }
   .tip b { color: #b8c6dd; font-weight: 650; }
   footer { margin-top: 18px; text-align: center; color: #56657f; font-size: 11px; letter-spacing: .04em; }
+  .text-card { margin-top: 18px; }
+  .text-card h2 {
+    font-size: 20px; line-height: 1.2; letter-spacing: -.4px; margin: 0 0 8px;
+  }
+  .text-card h2 span { color: var(--cyan); }
+  textarea {
+    width: 100%; min-height: 130px; resize: vertical;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 14px; color: var(--text); padding: 12px 14px;
+    font: inherit; font-size: 13.5px; line-height: 1.5; outline: none;
+  }
+  textarea:focus {
+    border-color: rgba(34,230,255,.55);
+    box-shadow: 0 0 0 3px rgba(34,230,255,.08);
+  }
+  .text-meta {
+    display: flex; justify-content: space-between; gap: 10px;
+    margin: 8px 2px 14px; color: var(--muted); font-size: 11px;
+  }
+  .text-actions { display: flex; align-items: center; gap: 12px; }
+  .text-status { font-size: 12px; color: var(--muted); }
+  .text-status.ok { color: var(--green); }
+  .text-status.err { color: var(--red); }
   @media (max-width: 480px) {
     body { padding: 18px 12px 36px; }
     .card { padding: 20px 16px; border-radius: 20px; }
@@ -721,6 +744,20 @@ class TransferServer {
 
     <p class="tip"><b>Works without internet</b> — keep this page open until the files finish. They are saved on the receiving device automatically.</p>
   </div>
+
+  <div class="card text-card">
+    <h2>Send text to <span>{{DEVICE_NAME}}</span>.</h2>
+    <p class="sub">Paste a link or a snippet. It is saved on the receiving device and copied to its clipboard.</p>
+    <textarea id="textInput" maxlength="16000" placeholder="Paste or type something…"></textarea>
+    <div class="text-meta">
+      <span>Copied to the receiver's clipboard</span>
+      <span id="textCount">0 / 16000</span>
+    </div>
+    <div class="text-actions">
+      <button class="pick" id="textSend" type="button">Send text</button>
+      <span class="text-status" id="textStatus"></span>
+    </div>
+  </div>
   <footer>QuickDrop · local-first file transfer</footer>
 </div>
 <script>
@@ -735,6 +772,11 @@ class TransferServer {
   var totalBar = document.getElementById('totalBar');
   var totalFill = totalBar.firstElementChild;
   var running = false;
+  var textInput = document.getElementById('textInput');
+  var textCount = document.getElementById('textCount');
+  var textSend = document.getElementById('textSend');
+  var textStatus = document.getElementById('textStatus');
+  var textRunning = false;
 
   function fmt(bytes) {
     if (bytes < 1024) return bytes + ' B';
@@ -863,6 +905,73 @@ class TransferServer {
   });
   document.addEventListener('dragover', function (e) { e.preventDefault(); });
   document.addEventListener('drop', function (e) { e.preventDefault(); });
+  function updateTextCount() {
+    textCount.textContent = textInput.value.length + ' / 16000';
+  }
+
+  textInput.addEventListener('input', updateTextCount);
+  textInput.addEventListener('input', function () {
+    textStatus.textContent = '';
+    textStatus.className = 'text-status';
+  });
+
+  textSend.addEventListener('click', function () {
+    var text = textInput.value;
+    if (textRunning) return;
+    if (!text.trim()) {
+      textStatus.textContent = 'Type something first.';
+      textStatus.className = 'text-status err';
+      return;
+    }
+    if (text.length > 16000) {
+      textStatus.textContent = 'Text is limited to 16000 characters.';
+      textStatus.className = 'text-status err';
+      return;
+    }
+
+    textRunning = true;
+    textSend.disabled = true;
+    textStatus.textContent = 'Sending…';
+    textStatus.className = 'text-status';
+
+    var stamp = new Date().toISOString()
+      .replace(/[-:T]/g, '')
+      .slice(0, 14);
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/transfer');
+    xhr.setRequestHeader(
+      'X-File-Name',
+      encodeURIComponent('QuickDrop-text-' + stamp + '.txt')
+    );
+    xhr.setRequestHeader(
+      'X-Sender-Name',
+      encodeURIComponent('Web browser')
+    );
+    xhr.setRequestHeader('X-Text-Snippet', '1');
+    xhr.setRequestHeader('X-File-Type', 'text/plain');
+    xhr.setRequestHeader('Content-Type', 'text/plain; charset=utf-8');
+    xhr.onload = function () {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        textInput.value = '';
+        updateTextCount();
+        textStatus.textContent = 'Text delivered.';
+        textStatus.className = 'text-status ok';
+      } else {
+        textStatus.textContent =
+          'Could not send text (HTTP ' + xhr.status + ').';
+        textStatus.className = 'text-status err';
+      }
+      textRunning = false;
+      textSend.disabled = false;
+    };
+    xhr.onerror = function () {
+      textStatus.textContent = 'Could not reach the receiving device.';
+      textStatus.className = 'text-status err';
+      textRunning = false;
+      textSend.disabled = false;
+    };
+    xhr.send(text);
+  });
 })();
 </script>
 </body>
