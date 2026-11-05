@@ -62,7 +62,7 @@ class _QuickDropAppState extends State<QuickDropApp> {
       child: MaterialApp(
         title: 'QuickDrop',
         debugShowCheckedModeBanner: false,
-        theme: QuickDropTheme.lightTheme,
+        theme: QuickDropTheme.light,
         builder: (context, child) => TopNoticeHost(
           controller: _notices,
           child: child ?? const SizedBox.shrink(),
