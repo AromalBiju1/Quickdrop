@@ -88,9 +88,8 @@ class TopNoticeScope extends InheritedNotifier<TopNoticeCenter> {
     required super.child,
   }) : super(notifier: controller);
 
-  static TopNoticeCenter? maybeOf(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<TopNoticeScope>()
-      ?.controller;
+  static TopNoticeCenter? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<TopNoticeScope>()?.controller;
 
   static TopNoticeCenter of(BuildContext context) {
     final center = maybeOf(context);
@@ -149,10 +148,7 @@ class TopNoticeHost extends StatelessWidget {
                       ).animate(animation);
                       return FadeTransition(
                         opacity: animation,
-                        child: SlideTransition(
-                          position: offset,
-                          child: child,
-                        ),
+                        child: SlideTransition(position: offset, child: child),
                       );
                     },
                     child: notice == null
@@ -187,7 +183,8 @@ class _TopNoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = _paletteFor(notice.tone);
+    final p = context.qd;
+    final palette = _paletteFor(notice.tone, p);
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -202,10 +199,10 @@ class _TopNoticeCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
                 decoration: BoxDecoration(
-                  color: QuickDropColors.surface,
+                  color: p.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: palette.border),
-                  boxShadow: QuickDropColors.raisedShadow,
+                  boxShadow: p.raisedShadow,
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -233,8 +230,8 @@ class _TopNoticeCard extends StatelessWidget {
                             notice.message,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: QuickDropText.cardTitle.copyWith(
-                              color: QuickDropColors.textPrimary,
+                            style: context.text.titleMedium!.copyWith(
+                              color: p.textPrimary,
                             ),
                           ),
                           if (notice.detail != null) ...[
@@ -243,8 +240,8 @@ class _TopNoticeCard extends StatelessWidget {
                               notice.detail!,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: QuickDropText.small.copyWith(
-                                color: QuickDropColors.textMuted,
+                              style: context.text.bodySmall!.copyWith(
+                                color: p.textMuted,
                               ),
                             ),
                           ],
@@ -266,7 +263,7 @@ class _TopNoticeCard extends StatelessWidget {
                           ),
                           minimumSize: const Size(0, 32),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          textStyle: QuickDropText.button.copyWith(
+                          textStyle: context.text.labelLarge!.copyWith(
                             fontSize: 13,
                           ),
                         ),
@@ -276,7 +273,7 @@ class _TopNoticeCard extends StatelessWidget {
                     IconButton(
                       onPressed: onDismiss,
                       icon: const Icon(Icons.close_rounded, size: 18),
-                      color: QuickDropColors.textFaint,
+                      color: p.textFaint,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
                         minWidth: 32,
@@ -309,34 +306,34 @@ class _NoticePalette {
   });
 }
 
-_NoticePalette _paletteFor(TopNoticeTone tone) {
+_NoticePalette _paletteFor(TopNoticeTone tone, QuickDropPalette p) {
   switch (tone) {
     case TopNoticeTone.success:
-      return const _NoticePalette(
-        strong: QuickDropColors.emeraldDark,
-        soft: QuickDropColors.emeraldSoft,
-        border: QuickDropColors.emeraldBorder,
+      return _NoticePalette(
+        strong: p.emeraldDark,
+        soft: p.emeraldSoft,
+        border: p.emeraldBorder,
         icon: Icons.check_circle_rounded,
       );
     case TopNoticeTone.info:
-      return const _NoticePalette(
-        strong: QuickDropColors.blue,
-        soft: QuickDropColors.blueSoft,
-        border: Color(0xFFBFDBFE),
+      return _NoticePalette(
+        strong: p.blue,
+        soft: p.blueSoft,
+        border: p.blue.withValues(alpha: 0.35),
         icon: Icons.info_rounded,
       );
     case TopNoticeTone.warning:
-      return const _NoticePalette(
-        strong: QuickDropColors.amber,
-        soft: QuickDropColors.amberSoft,
-        border: QuickDropColors.amberBorder,
+      return _NoticePalette(
+        strong: p.amber,
+        soft: p.amberSoft,
+        border: p.amberBorder,
         icon: Icons.warning_amber_rounded,
       );
     case TopNoticeTone.error:
-      return const _NoticePalette(
-        strong: QuickDropColors.roseDark,
-        soft: QuickDropColors.roseSoft,
-        border: QuickDropColors.roseBorder,
+      return _NoticePalette(
+        strong: p.roseDark,
+        soft: p.roseSoft,
+        border: p.roseBorder,
         icon: Icons.error_outline_rounded,
       );
   }

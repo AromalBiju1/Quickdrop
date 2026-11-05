@@ -14,14 +14,12 @@ class LinkChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUsb = kind == LinkKind.usb;
     final foreground = isUsb
-        ? QuickDropColors.emeraldDark
-        : QuickDropColors.textSecondary;
+        ? context.qd.emeraldDark
+        : context.qd.textSecondary;
     final background = isUsb
-        ? QuickDropColors.emeraldSoft
-        : QuickDropColors.surfaceSubtle;
-    final border = isUsb
-        ? QuickDropColors.emeraldBorder
-        : QuickDropColors.border;
+        ? context.qd.emeraldSoft
+        : context.qd.surfaceSubtle;
+    final border = isUsb ? context.qd.emeraldBorder : context.qd.border;
 
     return Container(
       height: compact ? 18 : 20,

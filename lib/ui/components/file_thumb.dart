@@ -39,7 +39,7 @@ class FileThumb extends StatelessWidget {
     final isImage = FileUtils.isImage(path);
     final file = File(path);
     final exists = file.existsSync();
-    final visual = FileVisual.forPath(path);
+    final visual = FileVisual.forPath(path, context.qd);
 
     Widget child;
     if (isImage && exists) {
@@ -66,11 +66,7 @@ class FileThumb extends StatelessWidget {
 
   Widget _fallback(FileVisual visual) {
     return Center(
-      child: Icon(
-        visual.icon,
-        color: visual.color,
-        size: size * 0.48,
-      ),
+      child: Icon(visual.icon, color: visual.color, size: size * 0.48),
     );
   }
 }
@@ -82,81 +78,81 @@ class FileVisual {
 
   const FileVisual(this.icon, this.color, this.background);
 
-  static FileVisual forPath(String path) {
+  static FileVisual forPath(String path, QuickDropPalette palette) {
     if (FileUtils.isImage(path)) {
-      return const FileVisual(
+      return FileVisual(
         Icons.image_outlined,
-        QuickDropColors.emeraldDark,
-        QuickDropColors.emeraldSoft,
+        palette.emeraldDark,
+        palette.emeraldSoft,
       );
     }
     if (FileUtils.isVideo(path)) {
-      return const FileVisual(
+      return FileVisual(
         Icons.play_circle_outline_rounded,
-        QuickDropColors.violet,
-        QuickDropColors.violetSoft,
+        palette.violet,
+        palette.violetSoft,
       );
     }
     if (FileUtils.isAudio(path)) {
-      return const FileVisual(
+      return FileVisual(
         Icons.graphic_eq_rounded,
-        QuickDropColors.blue,
-        QuickDropColors.blueSoft,
+        palette.blue,
+        palette.blueSoft,
       );
     }
     switch (FileUtils.extension(path)) {
       case '.pdf':
-        return const FileVisual(
+        return FileVisual(
           Icons.picture_as_pdf_outlined,
-          QuickDropColors.rose,
-          QuickDropColors.roseSoft,
+          palette.rose,
+          palette.roseSoft,
         );
       case '.zip':
       case '.rar':
       case '.7z':
       case '.tar':
       case '.gz':
-        return const FileVisual(
+        return FileVisual(
           Icons.folder_zip_outlined,
-          QuickDropColors.amber,
-          QuickDropColors.amberSoft,
+          palette.amber,
+          palette.amberSoft,
         );
       case '.apk':
-        return const FileVisual(
+        return FileVisual(
           Icons.android_rounded,
-          QuickDropColors.emeraldDark,
-          QuickDropColors.emeraldSoft,
+          palette.emeraldDark,
+          palette.emeraldSoft,
         );
       case '.doc':
       case '.docx':
       case '.txt':
       case '.md':
       case '.rtf':
-        return const FileVisual(
+        return FileVisual(
           Icons.description_outlined,
-          QuickDropColors.blue,
-          QuickDropColors.blueSoft,
+          palette.blue,
+          palette.blueSoft,
         );
       case '.xls':
       case '.xlsx':
       case '.csv':
-        return const FileVisual(
+        return FileVisual(
           Icons.table_chart_outlined,
-          QuickDropColors.emeraldDark,
-          QuickDropColors.emeraldSoft,
+          palette.emeraldDark,
+          palette.emeraldSoft,
         );
       case '.ppt':
       case '.pptx':
-        return const FileVisual(
+        return FileVisual(
           Icons.slideshow_outlined,
-          QuickDropColors.amber,
-          QuickDropColors.amberSoft,
+          palette.amber,
+          palette.amberSoft,
         );
       default:
-        return const FileVisual(
+        return FileVisual(
           Icons.insert_drive_file_outlined,
-          QuickDropColors.textMuted,
-          QuickDropColors.surfaceSubtle,
+          palette.textMuted,
+          palette.surfaceSubtle,
         );
     }
   }
@@ -185,8 +181,8 @@ class SectionLabel extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: QuickDropColors.textPrimary,
+                style: TextStyle(
+                  color: context.qd.textPrimary,
                   fontSize: 15,
                   height: 1.3,
                   fontWeight: FontWeight.w600,
@@ -197,8 +193,8 @@ class SectionLabel extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle!,
-                  style: const TextStyle(
-                    color: QuickDropColors.textMuted,
+                  style: TextStyle(
+                    color: context.qd.textMuted,
                     fontSize: 12,
                     height: 1.45,
                   ),
@@ -207,10 +203,7 @@ class SectionLabel extends StatelessWidget {
             ],
           ),
         ),
-        if (trailing != null) ...[
-          const SizedBox(width: 12),
-          trailing!,
-        ],
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
       ],
     );
   }
@@ -218,30 +211,31 @@ class SectionLabel extends StatelessWidget {
 
 class StatusPill extends StatelessWidget {
   final String label;
-  final Color foreground;
-  final Color background;
+  final Color? foreground;
+  final Color? background;
   final Color? borderColor;
   final bool dot;
 
   const StatusPill({
     super.key,
     required this.label,
-    this.foreground = QuickDropColors.emeraldDark,
-    this.background = QuickDropColors.emeraldSoft,
+    this.foreground,
+    this.background,
     this.borderColor,
     this.dot = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qd;
+    final fg = foreground ?? p.emeraldDark;
+    final bg = background ?? p.emeraldSoft;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: background,
+        color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: borderColor ?? background,
-        ),
+        border: Border.all(color: borderColor ?? bg),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -250,17 +244,14 @@ class StatusPill extends StatelessWidget {
             Container(
               width: 6,
               height: 6,
-              decoration: BoxDecoration(
-                color: foreground,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
             ),
             const SizedBox(width: 6),
           ],
           Text(
             label,
             style: TextStyle(
-              color: foreground,
+              color: fg,
               fontSize: 11.5,
               height: 1.2,
               fontWeight: FontWeight.w600,
@@ -289,16 +280,16 @@ class EmptyStateIcon extends StatelessWidget {
           Container(
             width: size,
             height: size,
-            decoration: const BoxDecoration(
-              color: QuickDropColors.surfaceMuted,
+            decoration: BoxDecoration(
+              color: context.qd.surfaceMuted,
               shape: BoxShape.circle,
             ),
           ),
           Container(
             width: size * 0.72,
             height: size * 0.72,
-            decoration: const BoxDecoration(
-              color: QuickDropColors.emeraldSoft,
+            decoration: BoxDecoration(
+              color: context.qd.emeraldSoft,
               shape: BoxShape.circle,
             ),
           ),
@@ -306,15 +297,11 @@ class EmptyStateIcon extends StatelessWidget {
             width: size * 0.46,
             height: size * 0.46,
             decoration: BoxDecoration(
-              color: QuickDropColors.emerald,
+              color: context.qd.emerald,
               shape: BoxShape.circle,
-              boxShadow: QuickDropColors.cardShadow,
+              boxShadow: context.qd.cardShadow,
             ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: size * 0.22,
-            ),
+            child: Icon(icon, color: context.qd.onAccent, size: size * 0.22),
           ),
         ],
       ),
