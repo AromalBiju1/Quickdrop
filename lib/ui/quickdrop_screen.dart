@@ -32,12 +32,14 @@ class QuickDropScreen extends StatefulWidget {
   final DiscoveryService discoveryService;
   final TransferServer transferServer;
   final AppSettings settings;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
 
   const QuickDropScreen({
     super.key,
     required this.discoveryService,
     required this.transferServer,
     required this.settings,
+    this.onThemeModeChanged,
   });
 
   @override
@@ -199,6 +201,7 @@ class _QuickDropScreenState extends State<QuickDropScreen> {
       ),
     );
     if (saved == true && mounted) {
+      widget.onThemeModeChanged?.call(_controller.settings.themeMode);
       _notify(
         'Settings saved',
         icon: Icons.check_rounded,

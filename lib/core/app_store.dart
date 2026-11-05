@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Lightweight JSON persistence. Keeps QuickDrop dependency-free while letting
@@ -72,11 +73,13 @@ class AppSettings {
   final String deviceName;
   final bool autoCopyImages;
   final bool notifications;
+  final ThemeMode themeMode;
 
   const AppSettings({
     required this.deviceName,
     this.autoCopyImages = true,
     this.notifications = true,
+    this.themeMode = ThemeMode.system,
   });
 
   factory AppSettings.defaults() {
@@ -108,6 +111,11 @@ class AppSettings {
           : defaults.deviceName,
       autoCopyImages: json['auto_copy_images'] as bool? ?? true,
       notifications: json['notifications'] as bool? ?? true,
+      themeMode: switch (json['theme_mode']) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      },
     );
   }
 
@@ -115,11 +123,13 @@ class AppSettings {
     String? deviceName,
     bool? autoCopyImages,
     bool? notifications,
+    ThemeMode? themeMode,
   }) {
     return AppSettings(
       deviceName: deviceName ?? this.deviceName,
       autoCopyImages: autoCopyImages ?? this.autoCopyImages,
       notifications: notifications ?? this.notifications,
+      themeMode: themeMode ?? this.themeMode,
     );
   }
 
@@ -127,5 +137,10 @@ class AppSettings {
     'device_name': deviceName,
     'auto_copy_images': autoCopyImages,
     'notifications': notifications,
+    'theme_mode': switch (themeMode) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+    },
   };
 }

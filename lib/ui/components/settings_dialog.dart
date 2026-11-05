@@ -26,6 +26,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   late final TextEditingController _nameController;
   late bool _autoCopy;
   late bool _notifications;
+  late ThemeMode _themeMode;
   bool _saving = false;
   String? _error;
 
@@ -36,6 +37,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     _nameController = TextEditingController(text: settings.deviceName);
     _autoCopy = settings.autoCopyImages;
     _notifications = settings.notifications;
+    _themeMode = settings.themeMode;
   }
 
   @override
@@ -59,6 +61,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         deviceName: name,
         autoCopyImages: _autoCopy,
         notifications: _notifications,
+        themeMode: _themeMode,
       ),
     );
     if (mounted) Navigator.pop(context, true);
@@ -93,7 +96,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'QuickDrop 1.1.0',
+                  'QuickDrop 1.2.0',
                   style: TextStyle(color: context.qd.textMuted, fontSize: 11),
                 ),
               ],
@@ -130,6 +133,45 @@ class _SettingsDialogState extends State<SettingsDialog> {
               const SizedBox(height: 4),
               Text(
                 'Shown to nearby devices and in the browser receiver.',
+                style: TextStyle(
+                  color: context.qd.textMuted,
+                  fontSize: 11,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 18),
+              _sectionLabel('APPEARANCE'),
+              const SizedBox(height: 8),
+              SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    label: Text('System'),
+                    icon: Icon(Icons.brightness_auto_rounded, size: 15),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    label: Text('Light'),
+                    icon: Icon(Icons.light_mode_rounded, size: 15),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    label: Text('Dark'),
+                    icon: Icon(Icons.dark_mode_rounded, size: 15),
+                  ),
+                ],
+                selected: {_themeMode},
+                showSelectedIcon: false,
+                onSelectionChanged: _saving
+                    ? null
+                    : (selection) =>
+                          setState(() => _themeMode = selection.first),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'System follows your device setting.',
                 style: TextStyle(
                   color: context.qd.textMuted,
                   fontSize: 11,

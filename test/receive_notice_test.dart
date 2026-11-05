@@ -29,21 +29,22 @@ Future<void> _pumpApp(WidgetTester tester, TransferServer server) async {
     QuickDropApp(
       discoveryService: discovery,
       transferServer: server,
-      settings: AppSettings.defaults(),
+      settings: AppSettings.defaults().copyWith(themeMode: ThemeMode.light),
     ),
   );
   await tester.pump(const Duration(milliseconds: 300));
 }
 
 TransferServer _server() => TransferServer(
-      deviceName: 'Test Device',
-      deviceId: 'test_dev',
-      enablePersistence: false,
-    );
+  deviceName: 'Test Device',
+  deviceId: 'test_dev',
+  enablePersistence: false,
+);
 
 void main() {
-  testWidgets('history loaded at startup does not raise a notice',
-      (tester) async {
+  testWidgets('history loaded at startup does not raise a notice', (
+    tester,
+  ) async {
     final server = _server();
     server.historyNotifier.value = [_item('old.png')];
 
@@ -52,30 +53,32 @@ void main() {
     expect(find.text('File received'), findsNothing);
   });
 
-  testWidgets('incoming files group into one top notice and View opens Received',
-      (tester) async {
-    final server = _server();
-    await _pumpApp(tester, server);
+  testWidgets(
+    'incoming files group into one top notice and View opens Received',
+    (tester) async {
+      final server = _server();
+      await _pumpApp(tester, server);
 
-    server.addIncomingHistory(_item('photo.png'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-    server.addIncomingHistory(_item('clip.mov'));
-    await tester.pump();
+      server.addIncomingHistory(_item('photo.png'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      server.addIncomingHistory(_item('clip.mov'));
+      await tester.pump();
 
-    await tester.pump(const Duration(milliseconds: 750));
-    await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 750));
+      await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('2 files received'), findsOneWidget);
-    expect(find.text('from Laptop'), findsOneWidget);
+      expect(find.text('2 files received'), findsOneWidget);
+      expect(find.text('from Laptop'), findsOneWidget);
 
-    await tester.tap(find.text('View'));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('View'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Transfers'), findsWidgets);
-    final received = tester.widget<Text>(find.text('Received'));
-    expect(received.style?.color, QuickDropPalette.light.textPrimary);
-    expect(find.text('2 files received'), findsNothing);
-  });
+      expect(find.text('Transfers'), findsWidgets);
+      final received = tester.widget<Text>(find.text('Received'));
+      expect(received.style?.color, QuickDropPalette.light.textPrimary);
+      expect(find.text('2 files received'), findsNothing);
+    },
+  );
 }

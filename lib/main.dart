@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'core/app_store.dart';
 import 'core/discovery_service.dart';
@@ -23,11 +24,13 @@ Future<void> main() async {
   await discoveryService.start();
   ShareReceiver.init();
 
-  runApp(QuickDropApp(
-    discoveryService: discoveryService,
-    transferServer: transferServer,
-    settings: settings,
-  ));
+  runApp(
+    QuickDropApp(
+      discoveryService: discoveryService,
+      transferServer: transferServer,
+      settings: settings,
+    ),
+  );
 }
 
 class QuickDropApp extends StatefulWidget {
@@ -48,6 +51,13 @@ class QuickDropApp extends StatefulWidget {
 
 class _QuickDropAppState extends State<QuickDropApp> {
   final TopNoticeCenter _notices = TopNoticeCenter();
+  late ThemeMode _themeMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _themeMode = widget.settings.themeMode;
+  }
 
   @override
   void dispose() {
@@ -63,14 +73,31 @@ class _QuickDropAppState extends State<QuickDropApp> {
         title: 'QuickDrop',
         debugShowCheckedModeBanner: false,
         theme: QuickDropTheme.light,
-        builder: (context, child) => TopNoticeHost(
-          controller: _notices,
-          child: child ?? const SizedBox.shrink(),
-        ),
+        darkTheme: QuickDropTheme.dark,
+        themeMode: _themeMode,
+        builder: (context, child) {
+          final dark = Theme.of(context).brightness == Brightness.dark;
+          return AnnotatedRegion<SystemUiOverlayStyle>(
+            value:
+                (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+                    .copyWith(
+                      statusBarColor: Colors.transparent,
+                      systemNavigationBarColor: context.qd.background,
+                      systemNavigationBarIconBrightness: dark
+                          ? Brightness.light
+                          : Brightness.dark,
+                    ),
+            child: TopNoticeHost(
+              controller: _notices,
+              child: child ?? const SizedBox.shrink(),
+            ),
+          );
+        },
         home: QuickDropScreen(
           discoveryService: widget.discoveryService,
           transferServer: widget.transferServer,
           settings: widget.settings,
+          onThemeModeChanged: (mode) => setState(() => _themeMode = mode),
         ),
       ),
     );
