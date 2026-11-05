@@ -1,11 +1,11 @@
-# QuickDrop v1.1.0 — Release Notes
+# QuickDrop v1.2.0 — Release Notes
 
-**Release date:** 3 November 2026
-**Version:** 1.1.0 (build 3)
+**Release date:** 5 November 2026
+**Version:** 1.2.0 (build 4)
 **Platforms:** Android 7.0+ (API 24) · Linux desktop (x64) · Windows 10/11 (x64)
-**APK artifact:** `release/QuickDrop-1.1.0.apk`
-**Linux artifact:** `release/QuickDrop-1.1.0-linux-x64.tar.gz`
-**Windows artifact:** `QuickDrop-1.1.0-windows-x64.zip` (built by GitHub Actions)
+**APK artifact:** `release/QuickDrop-1.2.0.apk`
+**Linux artifact:** `release/QuickDrop-1.2.0-linux-x64.tar.gz`
+**Windows artifact:** `QuickDrop-1.2.0-windows-x64.zip` (built by GitHub Actions)
 
 ---
 
@@ -16,9 +16,49 @@ computer over the local network. There is no account, no cloud upload, no pairin
 and no internet requirement. Both devices simply need to reach each other — normal Wi-Fi,
 a phone hotspot, a USB tether or a Bluetooth tether all work.
 
-This release builds on the first public **1.0.0** build and completes the offline-link
-experience: USB and Bluetooth tethering are now visible everywhere they matter, from the
-device card to the transfer screen and the diagnostics panel.
+This release builds on **1.1.0** and adds dark mode, text sending and subtle motion:
+the app now follows the system theme by default, lets you send links and snippets
+directly to a peer (or from the browser receiver), and keeps the interface calm with
+quick, reduced-motion-aware transitions.
+
+---
+
+## What's new in 1.2.0
+
+### Dark mode
+
+- **System / Light / Dark** in Settings → Appearance, following the OS by default.
+- Palette-tuned surfaces, borders and text, including dialogs, cards and the status bar.
+- The choice is persisted and survives restarts.
+
+### Send text
+
+- A **Text** action in Send opens a composer with a multiline field, a **Paste** button
+  and a 16,000-character counter, targeted at the selected device.
+- Received text is saved as a `.txt`, copied to the clipboard and added to Transfers
+  with a **Copy text** action.
+- Received-text banners show the snippet and name the sender.
+
+### Browser text
+
+- The `/web` receiver now has a text card, so a phone without the app can send a link
+  or snippet over the same local network.
+
+### Subtle motion
+
+- Tab crossfades, eased progress, panel size changes, history filter crossfades and
+  one-shot new-row entry.
+- All motion is quick and disabled when the OS asks for reduced motion.
+
+### Compatibility
+
+- Text uses the existing upload endpoint with the `X-Text-Snippet` header. A 1.2.0
+  receiver copies it to the clipboard and records text history; a 1.1.0 receiver
+  simply saves a normal `.txt`.
+- File transfers, discovery and history remain compatible with 1.1.0 devices.
+
+> The APK in this release is still signed with the local debug keystore. Replace the
+> signing config with a private release keystore before publishing to a store.
 
 ---
 
@@ -170,10 +210,10 @@ device card to the transfer screen and the diagnostics panel.
 
 ### Android (sideload)
 
-1. Copy `release/QuickDrop-1.1.0.apk` to the phone, or install over USB:
+1. Copy `release/QuickDrop-1.2.0.apk` to the phone, or install over USB:
 
    ```bash
-   adb install -r release/QuickDrop-1.1.0.apk
+   adb install -r release/QuickDrop-1.2.0.apk
    ```
 
 2. If installing from the phone's file manager, allow **Install unknown apps** for that
@@ -188,11 +228,11 @@ device card to the transfer screen and the diagnostics panel.
 
 ### Linux desktop
 
-Download `release/QuickDrop-1.1.0-linux-x64.tar.gz`, then either run it directly:
+Download `release/QuickDrop-1.2.0-linux-x64.tar.gz`, then either run it directly:
 
 ```bash
-tar -xzf QuickDrop-1.1.0-linux-x64.tar.gz
-cd QuickDrop-1.1.0-linux-x64
+tar -xzf QuickDrop-1.2.0-linux-x64.tar.gz
+cd QuickDrop-1.2.0-linux-x64
 ./quickdrop
 ```
 
@@ -220,11 +260,11 @@ sudo ufw allow 53317/udp
 
 ### Windows desktop
 
-Download `QuickDrop-1.1.0-windows-x64.zip`, then extract the whole folder and run:
+Download `QuickDrop-1.2.0-windows-x64.zip`, then extract the whole folder and run:
 
 ```powershell
-Expand-Archive QuickDrop-1.1.0-windows-x64.zip -DestinationPath .
-.\QuickDrop-1.1.0-windows-x64\quickdrop.exe
+Expand-Archive QuickDrop-1.2.0-windows-x64.zip -DestinationPath .
+.\QuickDrop-1.2.0-windows-x64\quickdrop.exe
 ```
 
 Keep `quickdrop.exe`, the DLLs and the `data` folder together. The build is portable
@@ -307,26 +347,26 @@ system. QuickDrop detects the resulting interfaces but does not toggle tethering
 | Check | Result |
 | --- | --- |
 | `flutter analyze` | Clean (0 issues) |
-| `flutter test` | 45 tests passing |
+| `flutter test` | 79 tests passing |
 | Toolchain | Flutter 3.47.7 / Dart 3.13.5 |
 | Build mode | `flutter build apk --release` and `flutter build linux --release` |
 | Windows build | `flutter build windows --release` on GitHub Actions `windows-latest` |
-| APK size | 53.7 MB (53,726,752 bytes) |
-| APK SHA-256 | `7645639ec1751a1bf09c3fc5d8b23ba6146e7633884e72598f9b539a28d352d3` |
-| Linux bundle SHA-256 | Attached as `QuickDrop-1.1.0-linux-x64.tar.gz.sha256` |
-| Windows bundle SHA-256 | Attached as `QuickDrop-1.1.0-windows-x64.zip.sha256` |
+| APK size | 54.2 MB (54,218,868 bytes) |
+| APK SHA-256 | `791bf57d5976707790832201d2c5fdf84e7e157f8d3de375536016c49006198c` |
+| Linux bundle SHA-256 | Attached as `QuickDrop-1.2.0-linux-x64.tar.gz.sha256` |
+| Windows bundle SHA-256 | Attached as `QuickDrop-1.2.0-windows-x64.zip.sha256` |
 
 Verify the downloaded files:
 
 ```bash
-sha256sum release/QuickDrop-1.1.0.apk
-sha256sum -c QuickDrop-1.1.0-linux-x64.tar.gz.sha256
+sha256sum release/QuickDrop-1.2.0.apk
+sha256sum -c QuickDrop-1.2.0-linux-x64.tar.gz.sha256
 ```
 
 On Windows, compare the output of this command with the adjacent `.sha256` file:
 
 ```powershell
-Get-FileHash QuickDrop-1.1.0-windows-x64.zip -Algorithm SHA256
+Get-FileHash QuickDrop-1.2.0-windows-x64.zip -Algorithm SHA256
 ```
 
 The desktop archives are built in CI, so each release attaches its own `.sha256` file

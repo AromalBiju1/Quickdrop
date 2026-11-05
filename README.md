@@ -7,7 +7,7 @@
 > **Zero-Friction Phone-to-Computer Screenshot & Photo Transfer**<br>
 > Direct peer-to-peer Wi-Fi streaming to Linux or Windows with zero cloud, zero social media, and zero USB/Bluetooth pairing hassle.
 
-**Latest release:** [v1.1.0 — release notes](release/RELEASE.md)
+**Latest release:** [v1.2.0 — release notes](release/RELEASE.md)
 
 ---
 
@@ -42,8 +42,8 @@ prompts, or add inbound rules for TCP `53318` and UDP `53317`.
 
 ### Run Linux Desktop Receiver
 ```bash
-tar -xzf QuickDrop-1.1.0-linux-x64.tar.gz
-cd QuickDrop-1.1.0-linux-x64
+tar -xzf QuickDrop-1.2.0-linux-x64.tar.gz
+cd QuickDrop-1.2.0-linux-x64
 ./quickdrop
 # Optional application-menu install:
 ./install.sh
@@ -58,8 +58,8 @@ flutter run -d linux
 
 ### Run Windows Desktop Receiver
 ```powershell
-Expand-Archive QuickDrop-1.1.0-windows-x64.zip -DestinationPath .
-.\QuickDrop-1.1.0-windows-x64\quickdrop.exe
+Expand-Archive QuickDrop-1.2.0-windows-x64.zip -DestinationPath .
+.\QuickDrop-1.2.0-windows-x64\quickdrop.exe
 ```
 
 Keep `quickdrop.exe`, the DLLs, and the `data` folder together. The ZIP is portable
@@ -108,8 +108,8 @@ flutter build apk --release
 adb install -r build/app/outputs/flutter-apk/app-release.apk
 ```
 
-A ready-to-sideload build is placed in `release/QuickDrop-1.1.0.apk`.
-A Linux x64 bundle is in `release/QuickDrop-1.1.0-linux-x64.tar.gz`; the
+A ready-to-sideload build is placed in `release/QuickDrop-1.2.0.apk`.
+A Linux x64 bundle is in `release/QuickDrop-1.2.0-linux-x64.tar.gz`; the
 Windows x64 ZIP is built by GitHub Actions because Flutter cannot cross-build
 Windows from Linux. The workflow at
 [`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml)
